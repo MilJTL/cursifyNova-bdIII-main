@@ -1,15 +1,13 @@
 // src/routes/index.ts
 import { Router } from 'express';
 import authRoutes from './auth';
+import courseRoutes from './courses';
+// Importar más rutas según sea necesario
 
 const router = Router();
 
-// Montar rutas de autenticación
 router.use('/auth', authRoutes);
-
-// Aquí se añadirán otras rutas (cursos, módulos, lecciones, etc.)
-// router.use('/courses', courseRoutes);
-// router.use('/modules', moduleRoutes);
-// router.use('/lessons', lessonRoutes);
+router.use('/courses', courseRoutes);
+// Añadir más rutas según sea necesario
 
 export default router;

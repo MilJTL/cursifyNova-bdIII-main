@@ -3,25 +3,15 @@ import { AuthProvider } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import Courses from './pages/Courses';
+import CourseDetail from './pages/CourseDetail';
+import LessonViewer from './pages/LessonView';
+import Dashboard from './pages/Dashboard';
+//import AdminRoute from './components/layout/AdminRoute';
 import PrivateRoute from './components/layout/PrivateRoute';
 import Navbar from './components/layout/Navbar';
 import NotFound from './pages/NotFound';
 import './App.css';
-
-// Componentes temporales para desarrollo
-const Dashboard = () => (
-  <div className="container mx-auto px-4 py-8">
-    <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
-    <p>Bienvenido a CursifyNova - Tu plataforma de aprendizaje en línea</p>
-  </div>
-);
-
-const Courses = () => (
-  <div className="container mx-auto px-4 py-8">
-    <h1 className="text-3xl font-bold mb-6">Cursos disponibles</h1>
-    <p>Aquí se mostrarán los cursos disponibles (en desarrollo)</p>
-  </div>
-);
 
 function App() {
   return (
@@ -34,13 +24,23 @@ function App() {
               {/* Rutas públicas */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              
-              {/* Rutas protegidas */}
+              <Route path="/courses" element={<Courses />} />
+              <Route path="/courses/:id" element={<CourseDetail />} />
+
+              {/* Rutas protegidas (cualquier usuario autenticado) */}
               <Route element={<PrivateRoute />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/courses" element={<Courses />} />
+                <Route path="/courses/:courseId/lessons/:lessonId" element={<LessonViewer />} />
               </Route>
+              
+              {/* Rutas solo para instructores/admin 
+              <Route element={<AdminRoute />}>
+                <Route path="/instructor/courses/new" element={<CreateCourse />} />
+                <Route path="/instructor/courses/:id/edit" element={<EditCourse />} />
+                <Route path="/instructor/courses/:id/content" element={<ManageCourseContent />} />
+                <Route path="/instructor/courses/:id/analytics" element={<CourseAnalytics />} />
+              </Route>*/}
               
               {/* Página 404 */}
               <Route path="*" element={<NotFound />} />

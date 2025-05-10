@@ -1,6 +1,6 @@
 // src/contexts/AuthContext.tsx
 import React, { createContext, useState, useEffect } from 'react';
-import { getProfile, logout } from '../api/auth';
+import { getProfile, logout, checkServerAvailability } from '../api/auth';
 
 // Define la interfaz UserData si no está disponible en auth.ts
 export interface UserData {
@@ -8,7 +8,7 @@ export interface UserData {
     nombre: string;
     username: string;
     email: string;
-    rol: string;
+    rol: 'usuario' | 'admin';
     premium?: boolean;
     intereses: string[];
     avatarUrl?: string;
@@ -37,7 +37,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 interface AuthProviderProps {
-    children: React.ReactNode;  // Cambiado a React.ReactNode
+    children: React.ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -48,24 +48,72 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Verificar si hay un token almacenado al cargar la aplicación
     useEffect(() => {
         const checkAuth = async () => {
-            const token = localStorage.getItem('token');
-            if (token) {
-                try {
-                    // Verificar si el token es válido obteniendo el perfil
-                    const userData = await getProfile();
-                    setUser(userData);
-                } catch (err: unknown) {
-                    console.error('Error al verificar autenticación:', err);
-                    if (err instanceof Error) {
-                        setError(err.message);
+            console.log('Verificando autenticación...');
+            setIsLoading(true);
+
+            try {
+                // Primero verificar si el servidor está disponible
+                const isServerAvailable = await checkServerAvailability();
+                
+                if (!isServerAvailable) {
+                    console.warn('⚠️ Servidor no disponible, usando modo alternativo');
+                    
+                    // Si estamos en desarrollo, podemos usar un usuario simulado
+                    if (import.meta.env.DEV){
+                        console.log('Usando usuario simulado para desarrollo');
+                        const mockUser: UserData = {
+                            id: 'dev-user-id',
+                            nombre: 'Usuario Desarrollo',
+                            username: 'dev_user',
+                            email: 'dev@example.com',
+                            rol: 'admin', // Cambia según necesites probar
+                            premium: true,
+                            intereses: [],
+                            avatarUrl: 'https://via.placeholder.com/150',
+                            biografia: 'Usuario de desarrollo'
+                        };
+                        setUser(mockUser);
                     } else {
-                        setError('An unknown error occurred');
+                        setError('No se pudo conectar con el servidor. Por favor, intenta más tarde.');
                     }
-                    // Si hay error, limpiar token inválido
-                    localStorage.removeItem('token');
+                    
+                    setIsLoading(false);
+                    return;
                 }
+
+                const token = localStorage.getItem('token');
+                if (token) {
+                    try {
+                        // Verificar si el token es válido obteniendo el perfil
+                        console.log('Obteniendo perfil con token...');
+                        const userData = await getProfile();
+                        console.log('Perfil obtenido:', userData);
+                        
+                        // Asegurarse de que el rol sea válido
+                        const transformedUserData: UserData = {
+                            ...userData,
+                            rol: userData.rol === 'usuario' || userData.rol === 'admin' ? userData.rol : 'usuario',
+                        };
+                        
+                        setUser(transformedUserData);
+                        setError(null);
+                    } catch (err: unknown) {
+                        console.error('Error al verificar autenticación:', err);
+                        if (err instanceof Error) {
+                            setError(err.message);
+                        } else {
+                            setError('Ocurrió un error desconocido');
+                        }
+                        // Si hay error, limpiar token inválido
+                        localStorage.removeItem('token');
+                    }
+                }
+            } catch (err: unknown) {
+                console.error('Error general en checkAuth:', err);
+                setError('Error al verificar la autenticación');
+            } finally {
+                setIsLoading(false);
             }
-            setIsLoading(false);
         };
 
         checkAuth();
@@ -73,6 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Función para cerrar sesión
     const handleLogout = () => {
+        console.log('Cerrando sesión...');
         logout();
         setUser(null);
     };

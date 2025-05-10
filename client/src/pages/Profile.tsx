@@ -70,7 +70,10 @@ const Profile: React.FC = () => {
 
             const updatedUser = await updateProfile(formData);
 
-            setUser(updatedUser);
+            setUser({
+                ...updatedUser,
+                rol: updatedUser.rol === 'usuario' || updatedUser.rol === 'admin' ? updatedUser.rol : 'usuario',
+            });
             setSuccess('Perfil actualizado correctamente');
             setIsEditing(false);
 
