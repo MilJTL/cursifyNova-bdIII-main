@@ -49,6 +49,22 @@ export interface Course {
     nivel: 'principiante' | 'intermedio' | 'avanzado';
     imagenCurso?: string;
     modulos?: Module[];
+    // Campos para el dashboard del instructor
+    estudiantes?: number;
+    calificacion?: number;
+    precio?: number;
+}
+
+// Interfaz para crear o actualizar cursos
+export interface CourseFormData {
+    titulo: string;
+    descripcion: string;
+    premium?: boolean;
+    nivel: 'principiante' | 'intermedio' | 'avanzado';
+    duracionEstimada?: string;
+    precio?: number;
+    etiquetas?: string[];
+    imagenCurso?: string;
 }
 
 // Interfaz de Módulo
@@ -77,9 +93,6 @@ export interface Lesson {
     esGratis: boolean;
 }
 
-
-
-
 export interface CoursesFilter {
     etiquetas?: string[];
     nivel?: 'principiante' | 'intermedio' | 'avanzado';
@@ -89,7 +102,6 @@ export interface CoursesFilter {
 
 // Para desarrollo/pruebas mientras no tengas backend
 // Actualizar los datos de ejemplo para incluir módulos y lecciones
-
 const mockCourses: Course[] = [
     {
         _id: "c101",
@@ -108,6 +120,9 @@ const mockCourses: Course[] = [
         duracionEstimada: "4h 30min",
         nivel: "principiante",
         imagenCurso: "https://images.unsplash.com/photo-1621839673705-6617adf9e890?q=80&w=1632&auto=format&fit=crop",
+        estudiantes: 42,
+        calificacion: 4.7,
+        precio: 29.99,
         modulos: [
             {
                 _id: "m101-1",
@@ -189,6 +204,9 @@ const mockCourses: Course[] = [
         duracionEstimada: "8h 15min",
         nivel: "avanzado",
         imagenCurso: "https://images.unsplash.com/photo-1627398242454-45a1465c2479?q=80&w=1374&auto=format&fit=crop",
+        estudiantes: 28,
+        calificacion: 4.9,
+        precio: 49.99,
         modulos: [
             {
                 _id: "m102-1",
@@ -221,8 +239,6 @@ const mockCourses: Course[] = [
     }
     // Puedes añadir más cursos con sus respectivos módulos y lecciones
 ];
-
-
 
 // Función para filtrar los cursos simulados
 export const getCourses = async (filters?: CoursesFilter): Promise<Course[]> => {
@@ -344,9 +360,6 @@ export const enrollCourse = async (id: string): Promise<void> => {
     }
 };
 
-
-// Añadir estas funciones al archivo existente
-
 // Obtener una lección por ID
 export const getLessonById = async (id: string): Promise<Lesson> => {
     try {
@@ -396,9 +409,7 @@ export const markLessonComplete = async (courseId: string, lessonId: string): Pr
     }
 };
 
-
-// Añadir esta función al archivo existente
-
+// Obtener cursos creados por el instructor actual
 export const getInstructorCourses = async () => {
     try {
         if (USE_MOCK_DATA) {
@@ -412,6 +423,8 @@ export const getInstructorCourses = async () => {
                     fechaCreacion: new Date("2023-01-15"),
                     estudiantes: 42,
                     calificacion: 4.7,
+                    precio: 29.99,
+                    nivel: "principiante",
                     imagenCurso: "https://images.unsplash.com/photo-1621839673705-6617adf9e890?q=80&w=1632&auto=format&fit=crop"
                 },
                 {
@@ -421,6 +434,8 @@ export const getInstructorCourses = async () => {
                     fechaCreacion: new Date("2023-02-20"),
                     estudiantes: 28,
                     calificacion: 4.9,
+                    precio: 49.99,
+                    nivel: "avanzado",
                     imagenCurso: "https://images.unsplash.com/photo-1627398242454-45a1465c2479?q=80&w=1374&auto=format&fit=crop"
                 }
             ];
@@ -433,5 +448,104 @@ export const getInstructorCourses = async () => {
         throw new Error('No se pudieron obtener los cursos del instructor');
     }
 };
+
+// Crear un nuevo curso (para instructores)
+export const createCourse = async (courseData: CourseFormData): Promise<Course> => {
+    try {
+        if (USE_MOCK_DATA) {
+            // Simular retraso de red
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const newCourse = {
+                _id: `c${Date.now()}`,
+                ...courseData,
+                fechaCreacion: new Date(),
+                estudiantes: 0,
+                calificacion: 0,
+                autor: {
+                    _id: "current-user-id",
+                    nombre: "Usuario Actual",
+                    username: "usuario_actual",
+                    avatarUrl: "https://randomuser.me/api/portraits/men/3.jpg"
+                },
+                etiquetas: courseData.etiquetas || []
+            };
+            
+            console.log('Curso creado (simulación):', newCourse);
+            return newCourse as Course;
+        } else {
+            const response = await coursesApi.post('/courses', courseData);
+            return response.data.data;
+        }
+    } catch (error) {
+        console.error('Error creating course:', error);
+        throw new Error('Error al crear el curso');
+    }
+};
+
+// Actualizar un curso existente (para instructores)
+export const updateCourse = async (id: string, courseData: CourseFormData): Promise<Course> => {
+    try {
+        if (USE_MOCK_DATA) {
+            // Simular retraso de red
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            const course = mockCourses.find(c => c._id === id);
+            
+            if (!course) {
+                throw new Error("Curso no encontrado");
+            }
+            
+            const updatedCourse = {
+                ...course,
+                ...courseData,
+            };
+            
+            console.log('Curso actualizado (simulación):', updatedCourse);
+            return updatedCourse as Course;
+        } else {
+            const response = await coursesApi.put(`/courses/${id}`, courseData);
+            return response.data.data;
+        }
+    } catch (error) {
+        console.error('Error updating course:', error);
+        throw new Error('Error al actualizar el curso');
+    }
+};
+
+// Eliminar un curso (para instructores)
+export const deleteCourse = async (id: string): Promise<void> => {
+    try {
+        if (USE_MOCK_DATA) {
+            // Simular retraso de red
+            await new Promise(resolve => setTimeout(resolve, 800));
+            
+            const course = mockCourses.find(c => c._id === id);
+            
+            if (!course) {
+                throw new Error("Curso no encontrado");
+            }
+            
+            console.log(`Curso eliminado (simulación): ${id} - ${course.titulo}`);
+            return;
+        } else {
+            await coursesApi.delete(`/courses/${id}`);
+        }
+    } catch (error) {
+        console.error('Error deleting course:', error);
+        throw new Error('Error al eliminar el curso');
+    }
+};
+
 // Exportación por defecto para compatibilidad con importaciones existentes
-export default getCourses;
+export default {
+    getCourses,
+    getCourseById,
+    enrollCourse,
+    getLessonById,
+    markLessonComplete,
+    getInstructorCourses,
+    createCourse,
+    updateCourse,
+    deleteCourse
+};

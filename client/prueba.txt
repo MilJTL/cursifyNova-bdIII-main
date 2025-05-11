@@ -1,0 +1,613 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getLessonById, markLessonComplete, getCourseById } from '../api/courses';
+import useAuth from '../hooks/useAuth';
+
+// Interfaz para los comentarios
+interface Comment {
+  _id: string;
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  content: string;
+  createdAt: string;
+  likes: number;
+  replies?: Comment[];
+  isInstructor?: boolean;
+}
+
+const LessonViewer: React.FC = () => {
+  const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>();
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  
+  // Estados existentes para la lección
+  const [currentLesson, setCurrentLesson] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [course, setCourse] = useState<any>(null);
+  const [modules, setModules] = useState<any[]>([]);
+  const [isLessonCompleted, setIsLessonCompleted] = useState<boolean>(false);
+  const [isMarkingComplete, setIsMarkingComplete] = useState<boolean>(false);
+  
+  // Nuevos estados para los comentarios
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState<string>('');
+  const [isPostingComment, setIsPostingComment] = useState<boolean>(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState<string>('');
+
+  // Efecto para cargar la lección y el curso (código existente)
+  useEffect(() => {
+    if (!courseId || !lessonId) return;
+
+    const loadLessonAndCourse = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Cargar la lección
+        const lessonData = await getLessonById(lessonId);
+        setCurrentLesson(lessonData);
+        
+        // Cargar el curso para obtener la estructura de módulos y lecciones
+        const courseData = await getCourseById(courseId);
+        setCourse(courseData);
+        setModules(courseData.modulos || []);
+        
+        // Verificar si la lección está completada por el usuario actual
+        // Esto dependerá de cómo implementes el seguimiento de progreso
+        setIsLessonCompleted(false); // Valor inicial, deberías obtenerlo de tu API
+        
+        // Cargar los comentarios de la lección (simulado)
+        loadComments();
+        
+        setError(null);
+      } catch (err) {
+        console.error('Error al cargar datos:', err);
+        setError('No se pudo cargar la lección. Inténtalo de nuevo más tarde.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadLessonAndCourse();
+  }, [courseId, lessonId]);
+
+  // Función simulada para cargar comentarios
+  const loadComments = () => {
+    // En un caso real, harías una llamada a la API
+    // Por ahora usamos datos simulados
+    const mockComments: Comment[] = [
+      {
+        _id: 'c1',
+        userId: 'u1',
+        username: 'Ana García',
+        avatarUrl: 'https://randomuser.me/api/portraits/women/12.jpg',
+        content: '¡Excelente lección! Me ayudó a entender mejor el concepto.',
+        createdAt: '2023-05-15T10:30:00Z',
+        likes: 5,
+        replies: [
+          {
+            _id: 'r1',
+            userId: 'u2',
+            username: 'Pedro Instructor',
+            avatarUrl: 'https://randomuser.me/api/portraits/men/32.jpg',
+            content: 'Gracias Ana, me alegra que te haya sido útil.',
+            createdAt: '2023-05-15T11:45:00Z',
+            likes: 2,
+            isInstructor: true
+          }
+        ]
+      },
+      {
+        _id: 'c2',
+        userId: 'u3',
+        username: 'Carlos Mendoza',
+        avatarUrl: 'https://randomuser.me/api/portraits/men/45.jpg',
+        content: '¿Alguien podría explicarme mejor la parte sobre los algoritmos de ordenamiento?',
+        createdAt: '2023-05-16T14:20:00Z',
+        likes: 0,
+        replies: []
+      }
+    ];
+    
+    setComments(mockComments);
+  };
+
+  // Función para manejar la publicación de un comentario
+  const handlePostComment = () => {
+    if (!newComment.trim() || !isAuthenticated) return;
+    
+    setIsPostingComment(true);
+    
+    // En un caso real, harías una llamada a la API
+    // Simulamos un pequeño retraso para mostrar el estado de carga
+    setTimeout(() => {
+      const newCommentObj: Comment = {
+        _id: `c${Date.now()}`,
+        userId: user?.id || 'temp-id',
+        username: user?.name || user?.email || 'Usuario',
+        avatarUrl: user?.avatar,
+        content: newComment,
+        createdAt: new Date().toISOString(),
+        likes: 0,
+        replies: []
+      };
+      
+      setComments([newCommentObj, ...comments]);
+      setNewComment('');
+      setIsPostingComment(false);
+    }, 500);
+  };
+
+  // Función para manejar respuestas a comentarios
+  const handleReply = (commentId: string) => {
+    if (!replyContent.trim() || !isAuthenticated) return;
+    
+    setIsPostingComment(true);
+    
+    // En un caso real, harías una llamada a la API
+    setTimeout(() => {
+      const reply: Comment = {
+        _id: `r${Date.now()}`,
+        userId: user?.id || 'temp-id',
+        username: user?.name || user?.email || 'Usuario',
+        avatarUrl: user?.avatar,
+        content: replyContent,
+        createdAt: new Date().toISOString(),
+        likes: 0,
+        isInstructor: user?.role === 'instructor'
+      };
+      
+      // Actualizar el comentario con la respuesta
+      const updatedComments = comments.map(comment => {
+        if (comment._id === commentId) {
+          return {
+            ...comment,
+            replies: [...(comment.replies || []), reply]
+          };
+        }
+        return comment;
+      });
+      
+      setComments(updatedComments);
+      setReplyContent('');
+      setReplyTo(null);
+      setIsPostingComment(false);
+    }, 500);
+  };
+
+  // Función para dar like a un comentario
+  const handleLike = (commentId: string, isReply = false, parentId?: string) => {
+    if (!isAuthenticated) return;
+    
+    // En un caso real, harías una llamada a la API
+    if (isReply && parentId) {
+      // Like a una respuesta
+      const updatedComments = comments.map(comment => {
+        if (comment._id === parentId && comment.replies) {
+          return {
+            ...comment,
+            replies: comment.replies.map(reply => 
+              reply._id === commentId ? {...reply, likes: reply.likes + 1} : reply
+            )
+          };
+        }
+        return comment;
+      });
+      setComments(updatedComments);
+    } else {
+      // Like a un comentario principal
+      const updatedComments = comments.map(comment => 
+        comment._id === commentId ? {...comment, likes: comment.likes + 1} : comment
+      );
+      setComments(updatedComments);
+    }
+  };
+
+  // Función para navegar a la siguiente lección
+  const navigateToNextLesson = () => {
+    // Implementa la lógica para navegar a la siguiente lección
+    console.log("Navegar a la siguiente lección");
+  };
+
+  // Función para marcar una lección como completada
+  const handleMarkComplete = async () => {
+    if (!courseId || !lessonId || isLessonCompleted) return;
+    
+    try {
+      setIsMarkingComplete(true);
+      // Llamada a la API para marcar la lección como completada
+      await markLessonComplete(lessonId);
+      setIsLessonCompleted(true);
+    } catch (err) {
+      console.error('Error al marcar como completada:', err);
+    } finally {
+      setIsMarkingComplete(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error || !currentLesson) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <p>{error || 'No se pudo cargar la lección'}</p>
+          <button 
+            className="mt-2 text-blue-600 hover:underline"
+            onClick={() => navigate(`/courses/${courseId}`)}
+          >
+            Volver al curso
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-50 min-h-screen">
+      <div className="container mx-auto px-4 py-6">
+        {/* Breadcrumb */}
+        <nav className="mb-4 text-sm text-gray-500">
+          <ol className="list-none p-0 inline-flex">
+            <li className="flex items-center">
+              <a href="/courses" className="hover:text-blue-600">Cursos</a>
+              <svg className="h-4 w-4 mx-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </li>
+            <li className="flex items-center">
+              <a href={`/courses/${courseId}`} className="hover:text-blue-600">{course?.titulo}</a>
+              <svg className="h-4 w-4 mx-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </li>
+            <li className="text-gray-700">{currentLesson.titulo}</li>
+          </ol>
+        </nav>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Contenido principal de la lección */}
+          <div className="lg:col-span-2">
+            <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+              <h1 className="text-2xl font-bold mb-4">{currentLesson.titulo}</h1>
+              
+              {/* Mostrar contenido según el tipo de lección */}
+              {currentLesson.tipo === 'video' && currentLesson.videoUrl ? (
+                <div className="aspect-w-16 aspect-h-9 mb-6">
+                  <iframe
+                    src={currentLesson.videoUrl}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full rounded"
+                  ></iframe>
+                </div>
+              ) : null}
+              
+              <div className="prose max-w-none">
+                {currentLesson.contenido}
+              </div>
+              
+              {/* Recursos adicionales */}
+              {currentLesson.recursosAdicionales && currentLesson.recursosAdicionales.length > 0 && (
+                <div className="mt-8 border-t pt-6">
+                  <h3 className="text-lg font-semibold mb-3">Recursos adicionales</h3>
+                  <ul className="space-y-2">
+                    {currentLesson.recursosAdicionales.map((recurso, idx) => (
+                      <li key={idx} className="flex items-center">
+                        <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        <a 
+                          href={recurso.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          {recurso.titulo}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Sección de comentarios */}
+            <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+              <h2 className="text-xl font-semibold mb-6">Comentarios y preguntas</h2>
+
+              {/* Formulario para añadir un comentario */}
+              {isAuthenticated ? (
+                <div className="mb-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0">
+                      <img 
+                        className="h-10 w-10 rounded-full"
+                        src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name || ''}`} 
+                        alt={user?.name || 'Usuario'}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="border border-gray-300 rounded-lg shadow-sm overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+                        <textarea
+                          rows={3}
+                          name="comment"
+                          id="comment"
+                          className="block w-full py-3 px-4 border-0 resize-none focus:ring-0 sm:text-sm"
+                          placeholder="Añadir un comentario o pregunta..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                        ></textarea>
+                      </div>
+                      
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handlePostComment}
+                          disabled={isPostingComment || newComment.trim() === ''}
+                          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
+                            isPostingComment || newComment.trim() === '' 
+                            ? 'bg-blue-300 cursor-not-allowed' 
+                            : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                          }`}
+                        >
+                          {isPostingComment ? 'Publicando...' : 'Publicar comentario'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                  <p className="text-blue-700">
+                    <a href="/login" className="font-medium underline">Inicia sesión</a> para dejar un comentario o hacer una pregunta.
+                  </p>
+                </div>
+              )}
+
+              {/* Lista de comentarios */}
+              <div className="space-y-6">
+                {comments.length === 0 ? (
+                  <div className="text-center py-6">
+                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No hay comentarios</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Sé el primero en dejar un comentario o hacer una pregunta.
+                    </p>
+                  </div>
+                ) : (
+                  comments.map((comment) => (
+                    <div key={comment._id} className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex space-x-3">
+                        <div className="flex-shrink-0">
+                          <img 
+                            className="h-10 w-10 rounded-full"
+                            src={comment.avatarUrl || `https://ui-avatars.com/api/?name=${comment.username}`} 
+                            alt={comment.username}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center">
+                            <p className="text-sm font-medium text-gray-900">
+                              {comment.username}
+                              {comment.isInstructor && (
+                                <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  Instructor
+                                </span>
+                              )}
+                            </p>
+                            <span className="ml-2 text-sm text-gray-500">
+                              {new Date(comment.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-sm text-gray-700">{comment.content}</div>
+                          <div className="mt-2 flex items-center space-x-4">
+                            <button
+                              type="button"
+                              onClick={() => handleLike(comment._id)}
+                              className="text-sm flex items-center text-gray-500 hover:text-blue-600"
+                            >
+                              <svg className="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                              </svg>
+                              {comment.likes} Me gusta
+                            </button>
+                            
+                            {isAuthenticated && (
+                              <button
+                                type="button"
+                                onClick={() => setReplyTo(replyTo === comment._id ? null : comment._id)}
+                                className="text-sm flex items-center text-gray-500 hover:text-blue-600"
+                              >
+                                <svg className="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                Responder
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Formulario de respuesta */}
+                          {replyTo === comment._id && (
+                            <div className="mt-3 pl-4 border-l-2 border-gray-200">
+                              <div className="flex space-x-3">
+                                <div className="flex-shrink-0">
+                                  <img 
+                                    className="h-8 w-8 rounded-full"
+                                    src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name || ''}`} 
+                                    alt={user?.name || 'Usuario'}
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <textarea
+                                    rows={2}
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    placeholder="Escribe tu respuesta..."
+                                    value={replyContent}
+                                    onChange={(e) => setReplyContent(e.target.value)}
+                                  ></textarea>
+                                  <div className="mt-2 flex justify-end space-x-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setReplyTo(null)}
+                                      className="px-3 py-1 text-sm text-gray-700 hover:text-gray-900"
+                                    >
+                                      Cancelar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleReply(comment._id)}
+                                      disabled={isPostingComment || replyContent.trim() === ''}
+                                      className={`px-3 py-1 text-sm text-white rounded-md ${
+                                        isPostingComment || replyContent.trim() === ''
+                                        ? 'bg-blue-300 cursor-not-allowed'
+                                        : 'bg-blue-600 hover:bg-blue-700'
+                                      }`}
+                                    >
+                                      {isPostingComment ? 'Enviando...' : 'Responder'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Respuestas */}
+                          {comment.replies && comment.replies.length > 0 && (
+                            <div className="mt-4 pl-4 border-l-2 border-gray-200 space-y-4">
+                              {comment.replies.map(reply => (
+                                <div key={reply._id} className="flex space-x-3">
+                                  <div className="flex-shrink-0">
+                                    <img 
+                                      className="h-8 w-8 rounded-full"
+                                      src={reply.avatarUrl || `https://ui-avatars.com/api/?name=${reply.username}`} 
+                                      alt={reply.username}
+                                    />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center">
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {reply.username}
+                                        {reply.isInstructor && (
+                                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            Instructor
+                                          </span>
+                                        )}
+                                      </p>
+                                      <span className="ml-2 text-sm text-gray-500">
+                                        {new Date(reply.createdAt).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                    <div className="mt-1 text-sm text-gray-700">{reply.content}</div>
+                                    <div className="mt-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleLike(reply._id, true, comment._id)}
+                                        className="text-sm flex items-center text-gray-500 hover:text-blue-600"
+                                      >
+                                        <svg className="h-5 w-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                        </svg>
+                                        {reply.likes} Me gusta
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Botones de navegación y completado */}
+            <div className="flex flex-col sm:flex-row justify-between space-y-4 sm:space-y-0 sm:space-x-4">
+              <button
+                onClick={handleMarkComplete}
+                disabled={isLessonCompleted || isMarkingComplete}
+                className={`px-6 py-3 rounded-lg font-medium flex-1 sm:flex-initial ${
+                  isLessonCompleted 
+                  ? 'bg-green-100 text-green-800 cursor-default' 
+                  : isMarkingComplete
+                    ? 'bg-blue-300 text-white cursor-wait'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                {isLessonCompleted 
+                  ? '✓ Lección completada' 
+                  : isMarkingComplete 
+                    ? 'Guardando...' 
+                    : 'Marcar como completada'
+                }
+              </button>
+              <button
+                onClick={navigateToNextLesson}
+                className="px-6 py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 flex-1 sm:flex-initial flex items-center justify-center"
+              >
+                Siguiente lección
+                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Sidebar - Navegación del curso */}
+          <div className="lg:col-span-1">
+            <div className="bg-white shadow-md rounded-lg p-4 sticky top-4">
+              <h2 className="text-xl font-bold mb-4">Contenido del curso</h2>
+
+              <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+                {modules.map((module, moduleIndex) => (
+                  <div key={moduleIndex} className="mb-4">
+                    <h3 className="font-medium text-gray-800 mb-2">
+                      {moduleIndex + 1}. {module.titulo}
+                    </h3>
+                    <ul className="pl-4 space-y-1">
+                      {module.lecciones.map((lesson, lessonIndex) => {
+                        const isCurrentLesson = lesson._id === lessonId;
+                        return (
+                          <li key={lessonIndex} className="py-1">
+                            <button
+                              onClick={() => navigate(`/courses/${courseId}/lessons/${lesson._id}`)}
+                              className={`text-left w-full flex items-center text-sm rounded-md px-2 py-1 ${
+                                isCurrentLesson
+                                  ? 'bg-blue-50 text-blue-700 font-medium'
+                                  : 'text-gray-700 hover:bg-gray-100'
+                              }`}
+                            >
+                              <span className="mr-2">{moduleIndex + 1}.{lessonIndex + 1}</span>
+                              <span className="truncate">{lesson.titulo}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LessonViewer;

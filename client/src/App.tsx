@@ -7,11 +7,17 @@ import Courses from './pages/Courses';
 import CourseDetail from './pages/CourseDetail';
 import LessonViewer from './pages/LessonView';
 import Dashboard from './pages/Dashboard';
-//import AdminRoute from './components/layout/AdminRoute';
+import AdminRoute from './components/layout/AdminRoute';
 import PrivateRoute from './components/layout/PrivateRoute';
 import Navbar from './components/layout/Navbar';
 import NotFound from './pages/NotFound';
 import './App.css';
+import CourseManagement from './pages/admin/CourseManagement';
+import CreateCourse from './pages/admin/CreateCourse';
+import EditCourse from './pages/admin/EditCourse';
+import ManageCourseContent from './pages/admin/ManageCourseContent';
+import CourseAnalytics from './pages/admin/CourseAnalytics';
+
 
 function App() {
   return (
@@ -33,15 +39,16 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/courses/:courseId/lessons/:lessonId" element={<LessonViewer />} />
               </Route>
-              
-              {/* Rutas solo para instructores/admin 
+
+              {/* Rutas solo para instructores/admin */}
               <Route element={<AdminRoute />}>
+                <Route path="/instructor/courses" element={<CourseManagement />} />
                 <Route path="/instructor/courses/new" element={<CreateCourse />} />
                 <Route path="/instructor/courses/:id/edit" element={<EditCourse />} />
                 <Route path="/instructor/courses/:id/content" element={<ManageCourseContent />} />
                 <Route path="/instructor/courses/:id/analytics" element={<CourseAnalytics />} />
-              </Route>*/}
-              
+              </Route>
+
               {/* Página 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>

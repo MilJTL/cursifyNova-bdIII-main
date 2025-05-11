@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getCourses, type Course, type CoursesFilter } from '../api/courses';
 import CourseCard from '../components/courses/CourseCard';
 
+
+
 const Courses: React.FC = () => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
