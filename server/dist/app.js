@@ -19,39 +19,34 @@ app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, helmet_1.default)());
 // Configuración de CORS
 app.use((0, cors_1.default)({
-    origin: config_1.config.clientUrl,
+    //origin: config.clientUrl || 'http://localhost:3000',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
-// Logging en desarrollo
-if (config_1.config.nodeEnv === 'development') {
+// Logging
+if (config_1.config.nodeEnv !== 'test') {
     app.use((0, morgan_1.default)('dev'));
 }
-// Ruta principal para verificar que la API está funcionando
+// Ruta raíz para comprobar el estado de la API
 app.get('/', (req, res) => {
     res.json({
-        message: 'API de CursifyNova funcionando correctamente',
+        message: "API de CursifyNova funcionando correctamente",
         environment: config_1.config.nodeEnv,
-        version: '1.0.0'
+        version: "1.0.0"
     });
 });
-// Rutas de la API
+// IMPORTANTE: Registrar las rutas con el prefijo /api
 app.use('/api', routes_1.default);
-// Middleware para manejo de rutas no encontradas
+// Registrar rutas de cursos directamente (alternativa para probar)
+const courses_1 = __importDefault(require("./routes/courses"));
+app.use('/api/courses-direct', courses_1.default);
+// Manejar rutas no encontradas
 app.use((req, res) => {
+    console.log(`Ruta no encontrada: ${req.method} ${req.path}`);
     res.status(404).json({
         success: false,
         message: 'Ruta no encontrada'
-    });
-});
-// Middleware para manejo de errores
-app.use((err, req, res, next) => {
-    console.error('Error no manejado:', err.stack);
-    res.status(err.statusCode || 500).json({
-        success: false,
-        message: err.message || 'Error interno del servidor',
-        error: config_1.config.nodeEnv === 'development' ? err.stack : undefined
     });
 });
 exports.default = app;

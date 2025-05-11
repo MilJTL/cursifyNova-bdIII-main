@@ -33,49 +33,36 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// src/models/Lesson.ts
 const mongoose_1 = __importStar(require("mongoose"));
-const LessonSchema = new mongoose_1.Schema({
-    title: {
-        type: String,
-        required: [true, 'El título de la lección es requerido'],
-        trim: true,
-    },
-    moduleId: {
+const lessonSchema = new mongoose_1.Schema({
+    moduloId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Module',
         required: true,
     },
-    content: {
+    titulo: {
         type: String,
-        required: [true, 'El contenido de la lección es requerido'],
+        required: [true, 'El título es obligatorio'],
+        trim: true,
     },
-    description: {
+    contenido: {
         type: String,
-        default: '',
+        required: [true, 'El contenido es obligatorio'],
     },
-    type: {
+    tipo: {
         type: String,
-        enum: ['video', 'text', 'quiz'],
+        enum: ['video', 'texto', 'quiz'],
         default: 'video',
     },
-    duration: {
+    duracion: {
         type: String,
-        default: '0min',
     },
-    order: {
+    ordenIndice: {
         type: Number,
-        required: true,
         default: 0,
     },
-    resources: [
-        {
-            type: {
-                type: String,
-                enum: ['pdf', 'link', 'quiz', 'code'],
-                required: true,
-            },
-            title: {
+    recursosAdicionales: [{
+            tipo: {
                 type: String,
                 required: true,
             },
@@ -83,9 +70,16 @@ const LessonSchema = new mongoose_1.Schema({
                 type: String,
                 required: true,
             },
-        },
-    ],
+            titulo: {
+                type: String,
+                required: true,
+            }
+        }],
+    esGratis: {
+        type: Boolean,
+        default: false,
+    }
 }, {
-    timestamps: true,
+    timestamps: true
 });
-exports.default = mongoose_1.default.model('Lesson', LessonSchema);
+exports.default = mongoose_1.default.model('Lesson', lessonSchema);

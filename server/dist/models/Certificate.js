@@ -32,10 +32,13 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-// src/models/Progress.ts
 const mongoose_1 = __importStar(require("mongoose"));
-const progressSchema = new mongoose_1.Schema({
+const crypto_1 = __importDefault(require("crypto"));
+const certificateSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
@@ -46,29 +49,23 @@ const progressSchema = new mongoose_1.Schema({
         ref: 'Course',
         required: true,
     },
-    leccionesCompletadas: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'Lesson',
-        }],
-    ultimaLeccion: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'Lesson',
-    },
-    porcentajeCompletado: {
-        type: Number,
-        default: 0,
-    },
-    fechaInicio: {
+    fechaEmision: {
         type: Date,
         default: Date.now,
     },
-    fechaUltimaActividad: {
-        type: Date,
-        default: Date.now,
+    codigoVerificacion: {
+        type: String,
+        required: true,
+        unique: true,
+        default: () => crypto_1.default.randomBytes(16).toString('hex'),
     },
+    urlDescarga: {
+        type: String,
+        required: true,
+    }
 }, {
     timestamps: true
 });
-// Índice compuesto para buscar rápido por usuario y curso
-progressSchema.index({ userId: 1, cursoId: 1 }, { unique: true });
-exports.default = mongoose_1.default.model('Progress', progressSchema);
+// Índice compuesto para evitar duplicados
+certificateSchema.index({ userId: 1, cursoId: 1 }, { unique: true });
+exports.default = mongoose_1.default.model('Certificate', certificateSchema);

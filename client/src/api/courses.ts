@@ -3,7 +3,7 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:5000/api';
 // Cambia a false cuando quieras usar la API real
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // Crear una instancia configurada de axios (similar a auth.ts)
 const coursesApi = axios.create({

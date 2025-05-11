@@ -33,51 +33,110 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// src/models/Course.ts
+// server/src/models/Course.ts
 const mongoose_1 = __importStar(require("mongoose"));
-const CourseSchema = new mongoose_1.Schema({
-    title: {
+const LeccionSchema = new mongoose_1.Schema({
+    titulo: {
         type: String,
-        required: [true, 'El título del curso es requerido'],
-        trim: true,
+        required: [true, 'El título de la lección es obligatorio'],
+        trim: true
     },
-    description: {
+    descripcion: String,
+    tipo: {
         type: String,
-        required: [true, 'La descripción del curso es requerida'],
+        enum: ['video', 'texto', 'quiz'],
+        required: true
+    },
+    contenido: String,
+    videoUrl: String,
+    duracion: Number,
+    orden: Number,
+    recursosAdicionales: [{
+            titulo: String,
+            url: String,
+            tipo: {
+                type: String,
+                enum: ['pdf', 'link', 'video', 'otro']
+            }
+        }]
+});
+const ModuloSchema = new mongoose_1.Schema({
+    titulo: {
+        type: String,
+        required: [true, 'El título del módulo es obligatorio'],
+        trim: true
+    },
+    descripcion: String,
+    orden: Number,
+    lecciones: [LeccionSchema]
+});
+// Esquema principal del curso
+const courseSchema = new mongoose_1.Schema({
+    titulo: {
+        type: String,
+        required: [true, 'El título es obligatorio'],
+        trim: true,
+        maxlength: [100, 'El título no puede tener más de 100 caracteres']
+    },
+    descripcion: {
+        type: String,
+        required: [true, 'La descripción es obligatoria'],
+        trim: true
     },
     premium: {
         type: Boolean,
         default: false,
     },
-    author: {
+    autor: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
-    modules: [
-        {
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'Module',
-        },
-    ],
-    tags: {
-        type: [String],
-        default: [],
+    modulos: [ModuloSchema],
+    etiquetas: [{
+            type: String,
+            trim: true
+        }],
+    fechaCreacion: {
+        type: Date,
+        default: Date.now,
     },
-    estimatedDuration: {
+    fechaActualizacion: {
+        type: Date,
+        default: Date.now,
+    },
+    duracionEstimada: {
         type: String,
-        default: '0h 0min',
     },
-    level: {
+    nivel: {
         type: String,
-        enum: ['beginner', 'intermediate', 'advanced'],
-        default: 'beginner',
+        enum: ['principiante', 'intermedio', 'avanzado'],
+        default: 'principiante',
     },
-    imageUrl: {
+    imagenCurso: {
         type: String,
-        default: '',
+        default: 'default-course.jpg',
     },
+    valoracion: {
+        type: Number,
+        default: 0,
+        min: [0, 'La valoración mínima es 0'],
+        max: [5, 'La valoración máxima es 5']
+    },
+    numValoraciones: {
+        type: Number,
+        default: 0
+    },
+    publicado: {
+        type: Boolean,
+        default: false
+    }
 }, {
-    timestamps: true,
+    timestamps: {
+        createdAt: 'fechaCreacion',
+        updatedAt: 'fechaActualizacion'
+    }
 });
-exports.default = mongoose_1.default.model('Course', CourseSchema);
+// Crear índices para búsqueda
+courseSchema.index({ titulo: 'text', descripcion: 'text' });
+exports.default = mongoose_1.default.model('Course', courseSchema);

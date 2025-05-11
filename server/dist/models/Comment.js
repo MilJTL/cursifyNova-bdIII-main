@@ -35,25 +35,28 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 // src/models/Comment.ts
 const mongoose_1 = __importStar(require("mongoose"));
-const CommentSchema = new mongoose_1.Schema({
+const commentSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
-    lessonId: {
+    leccionId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Lesson',
         required: true,
     },
-    content: {
+    contenido: {
         type: String,
-        required: [true, 'El contenido del comentario es requerido'],
+        required: [true, 'El contenido es obligatorio'],
         trim: true,
     },
-    replies: [
-        {
-            replyId: {
+    fecha: {
+        type: Date,
+        default: Date.now,
+    },
+    respuestas: [{
+            id: {
                 type: String,
                 default: () => new mongoose_1.default.Types.ObjectId().toString(),
             },
@@ -62,18 +65,20 @@ const CommentSchema = new mongoose_1.Schema({
                 ref: 'User',
                 required: true,
             },
-            content: {
+            contenido: {
                 type: String,
                 required: true,
                 trim: true,
             },
-            createdAt: {
+            fecha: {
                 type: Date,
                 default: Date.now,
-            },
-        },
-    ],
+            }
+        }]
 }, {
-    timestamps: true,
+    timestamps: true
 });
-exports.default = mongoose_1.default.model('Comment', CommentSchema);
+// Índices para búsquedas eficientes
+commentSchema.index({ leccionId: 1 });
+commentSchema.index({ userId: 1 });
+exports.default = mongoose_1.default.model('Comment', commentSchema);

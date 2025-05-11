@@ -1,13 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
-import { TokenPayload } from '../utils/jwt';
+//import { TokenPayload } from '../utils/jwt';
+import { TokenPayload } from '../utils/jwt'; // Asegúrate de que la ruta es correcta
 
 // Extendemos el tipo Request para incluir el usuario
 declare global {
-    namespace Express {
-        interface Request {
-            user?: TokenPayload;
-        }
+  namespace Express {
+    interface Request {
+      user?: {
+        userId: string;
+        role?: string;
+      };
     }
+  }
 }
 
 /**
@@ -25,7 +29,7 @@ export const checkRole = (roles: string[]) => {
         }
 
         // Verificar si el rol del usuario está en la lista de roles permitidos
-        if (!roles.includes(req.user.role)) {
+        if (!req.user.role || !roles.includes(req.user.role)) {
             return res.status(403).json({
                 success: false,
                 message: 'Acceso prohibido - No tienes los permisos necesarios'

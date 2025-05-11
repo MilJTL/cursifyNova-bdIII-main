@@ -6,11 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // src/routes/index.ts
 const express_1 = require("express");
 const auth_1 = __importDefault(require("./auth"));
+const courses_1 = __importDefault(require("./courses"));
+// Importar más rutas según sea necesario
 const router = (0, express_1.Router)();
-// Montar rutas de autenticación
 router.use('/auth', auth_1.default);
-// Aquí se añadirán otras rutas (cursos, módulos, lecciones, etc.)
-// router.use('/courses', courseRoutes);
-// router.use('/modules', moduleRoutes);
-// router.use('/lessons', lessonRoutes);
+router.use('/courses', courses_1.default);
+// Añadir más rutas según sea necesario
 exports.default = router;

@@ -15,7 +15,7 @@ const checkRole = (roles) => {
             });
         }
         // Verificar si el rol del usuario está en la lista de roles permitidos
-        if (!roles.includes(req.user.role)) {
+        if (!req.user.role || !roles.includes(req.user.role)) {
             return res.status(403).json({
                 success: false,
                 message: 'Acceso prohibido - No tienes los permisos necesarios'

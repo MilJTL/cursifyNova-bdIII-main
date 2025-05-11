@@ -33,31 +33,31 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// src/models/Module.ts
+// server/src/models/Module.ts
 const mongoose_1 = __importStar(require("mongoose"));
-const ModuleSchema = new mongoose_1.Schema({
-    title: {
+const moduleSchema = new mongoose_1.Schema({
+    titulo: {
         type: String,
-        required: [true, 'El título del módulo es requerido'],
+        required: [true, 'El título es obligatorio'],
         trim: true,
     },
-    courseId: {
+    cursoId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Course',
         required: true,
     },
-    lessons: [
-        {
+    lecciones: [{
             type: mongoose_1.Schema.Types.ObjectId,
             ref: 'Lesson',
-        },
-    ],
-    order: {
-        type: Number,
-        required: true,
-        default: 0,
+        }],
+    descripcion: {
+        type: String,
     },
+    ordenIndice: {
+        type: Number,
+        default: 0,
+    }
 }, {
-    timestamps: true,
+    timestamps: true
 });
-exports.default = mongoose_1.default.model('Module', ModuleSchema);
+exports.default = mongoose_1.default.model('Module', moduleSchema);

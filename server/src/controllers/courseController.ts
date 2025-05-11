@@ -1,7 +1,7 @@
 // server/src/controllers/courseController.ts
 import { Request, Response } from 'express';
 import Course from '../models/Course';
-import User from '../models/User'; // Añadir esta importación
+import User from '../models/User';
 
 // Extender la interfaz Request para incluir user (TypeScript)
 declare global {
@@ -19,7 +19,7 @@ declare global {
 // Obtener todos los cursos
 export const getCourses = async (req: Request, res: Response) => {
     try {
-        const { etiquetas, nivel, premium, busqueda } = req.query;
+        const { etiquetas, nivel, premium, busqueda, page = 1, limit = 10 } = req.query;
 
         const query: any = {};
 
@@ -29,15 +29,30 @@ export const getCourses = async (req: Request, res: Response) => {
         }
         if (nivel) query.nivel = nivel;
         if (premium !== undefined) query.premium = premium === 'true';
-        if (busqueda) query.titulo = { $regex: busqueda, $options: 'i' };
+        if (busqueda) {
+            query.$text = { $search: busqueda.toString() };
+        }
+
+        // Añadir paginación
+        const pageNum = parseInt(page.toString(), 10);
+        const limitNum = parseInt(limit.toString(), 10);
+        const skip = (pageNum - 1) * limitNum;
 
         const cursos = await Course.find(query)
             .populate('autor', 'nombre username avatarUrl')
-            .sort({ fechaCreacion: -1 });
+            .sort({ fechaCreacion: -1 })
+            .skip(skip)
+            .limit(limitNum);
+
+        // Obtener el total de documentos para la paginación
+        const total = await Course.countDocuments(query);
 
         res.status(200).json({
             success: true,
             count: cursos.length,
+            total,
+            pages: Math.ceil(total / limitNum),
+            currentPage: pageNum,
             data: cursos
         });
     } catch (error: any) {
@@ -52,13 +67,7 @@ export const getCourses = async (req: Request, res: Response) => {
 export const getCourseById = async (req: Request, res: Response) => {
     try {
         const curso = await Course.findById(req.params.id)
-            .populate('autor', 'nombre username avatarUrl biografia')
-            .populate({
-                path: 'modulos',
-                populate: {
-                    path: 'lecciones'
-                }
-            });
+            .populate('autor', 'nombre username avatarUrl biografia');
 
         if (!curso) {
             return res.status(404).json({
@@ -82,12 +91,21 @@ export const getCourseById = async (req: Request, res: Response) => {
 // Crear curso
 export const createCourse = async (req: Request, res: Response) => {
     try {
-        const userId = req.user?.userId; // Corregido: userId en lugar de id
+        const userId = req.user?.userId;
 
         if (!userId) {
             return res.status(401).json({
                 success: false,
                 message: 'No autorizado'
+            });
+        }
+
+        // Validar campos requeridos
+        const { titulo, descripcion } = req.body;
+        if (!titulo || !descripcion) {
+            return res.status(400).json({
+                success: false,
+                message: 'El título y la descripción son obligatorios'
             });
         }
 
@@ -97,6 +115,12 @@ export const createCourse = async (req: Request, res: Response) => {
         };
 
         const curso = await Course.create(cursoData);
+
+        // Añadir el curso a los cursos creados por el usuario
+        await User.findByIdAndUpdate(
+            userId,
+            { $addToSet: { cursosCreados: curso._id } }
+        );
 
         res.status(201).json({
             success: true,
@@ -114,12 +138,30 @@ export const createCourse = async (req: Request, res: Response) => {
 export const enrollCourse = async (req: Request, res: Response) => {
     try {
         const courseId = req.params.id;
-        const userId = req.user?.userId; // Corregido: userId en lugar de id
+        const userId = req.user?.userId;
 
         if (!userId) {
             return res.status(401).json({
                 success: false,
                 message: 'No autorizado'
+            });
+        }
+
+        // Verificar si el curso existe
+        const curso = await Course.findById(courseId);
+        if (!curso) {
+            return res.status(404).json({
+                success: false,
+                message: 'Curso no encontrado'
+            });
+        }
+
+        // Verificar si el usuario ya está inscrito
+        const user = await User.findById(userId);
+        if (user && user.cursosInscritos && user.cursosInscritos.map(id => id.toString()).includes(courseId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Ya estás inscrito en este curso'
             });
         }
 
@@ -140,39 +182,41 @@ export const enrollCourse = async (req: Request, res: Response) => {
         });
     }
 };
-// Añade estas funciones al final de tu courseController.ts
 
 // Actualizar un curso
 export const updateCourse = async (req: Request, res: Response) => {
     try {
         const courseId = req.params.id;
         const userId = req.user?.userId;
-        
+
         // Verificar si el curso existe
         const course = await Course.findById(courseId);
-        
+
         if (!course) {
             return res.status(404).json({
                 success: false,
                 message: 'Curso no encontrado'
             });
         }
-        
-        // Verificar si el usuario es el autor del curso
-        if (course.autor.toString() !== userId) {
+
+        // Verificar si el usuario es el autor del curso o es administrador
+        if (course.autor.toString() !== userId && req.user?.role !== 'admin') {
             return res.status(403).json({
                 success: false,
                 message: 'No tienes permiso para actualizar este curso'
             });
         }
-        
+
+        // Actualizar la fecha de actualización
+        req.body.fechaActualizacion = Date.now();
+
         // Actualizar el curso
         const updatedCourse = await Course.findByIdAndUpdate(
             courseId,
             req.body,
             { new: true, runValidators: true }
         );
-        
+
         res.status(200).json({
             success: true,
             data: updatedCourse
@@ -185,36 +229,111 @@ export const updateCourse = async (req: Request, res: Response) => {
     }
 };
 
-// Eliminar un curso
-export const deleteCourse = async (req: Request, res: Response) => {
+// Añadir un módulo a un curso
+export const addModuleToCourse = async (req: Request, res: Response) => {
     try {
         const courseId = req.params.id;
         const userId = req.user?.userId;
-        
+
         // Verificar si el curso existe
         const course = await Course.findById(courseId);
-        
+
         if (!course) {
             return res.status(404).json({
                 success: false,
                 message: 'Curso no encontrado'
             });
         }
-        
+
         // Verificar si el usuario es el autor del curso
         if (course.autor.toString() !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'No tienes permiso para modificar este curso'
+            });
+        }
+
+        // Crear el nuevo módulo
+        const { titulo, descripcion } = req.body;
+
+        if (!titulo) {
+            return res.status(400).json({
+                success: false,
+                message: 'El título del módulo es obligatorio'
+            });
+        }
+
+        // Calcular el orden del nuevo módulo
+        const orden = course.modulos.length + 1;
+
+        // Añadir el módulo al curso
+        const updatedCourse = await Course.findByIdAndUpdate(
+            courseId,
+            {
+                $push: {
+                    modulos: {
+                        titulo,
+                        descripcion,
+                        orden,
+                        lecciones: []
+                    }
+                },
+                fechaActualizacion: Date.now()
+            },
+            { new: true }
+        );
+
+        res.status(200).json({
+            success: true,
+            data: updatedCourse
+        });
+    } catch (error: any) {
+        res.status(400).json({
+            success: false,
+            message: error.message || 'Error al añadir el módulo'
+        });
+    }
+};
+
+// Eliminar un curso
+export const deleteCourse = async (req: Request, res: Response) => {
+    try {
+        const courseId = req.params.id;
+        const userId = req.user?.userId;
+
+        // Verificar si el curso existe
+        const course = await Course.findById(courseId);
+
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Curso no encontrado'
+            });
+        }
+
+        // Verificar si el usuario es el autor del curso o administrador
+        if (course.autor.toString() !== userId && req.user?.role !== 'admin') {
             return res.status(403).json({
                 success: false,
                 message: 'No tienes permiso para eliminar este curso'
             });
         }
-        
+
         // Eliminar el curso
         await Course.findByIdAndDelete(courseId);
-        
-        // También deberías considerar eliminar los módulos, lecciones y progreso asociados
-        // Esto lo podrías hacer con operaciones en cascada o usando middleware de Mongoose
-        
+
+        // Eliminar la referencia del curso en los usuarios inscritos
+        await User.updateMany(
+            { cursosInscritos: courseId },
+            { $pull: { cursosInscritos: courseId } }
+        );
+
+        // Eliminar la referencia del curso en los cursos creados del autor
+        await User.findByIdAndUpdate(
+            course.autor,
+            { $pull: { cursosCreados: courseId } }
+        );
+
         res.status(200).json({
             success: true,
             message: 'Curso eliminado correctamente'
@@ -223,6 +342,47 @@ export const deleteCourse = async (req: Request, res: Response) => {
         res.status(500).json({
             success: false,
             message: error.message || 'Error al eliminar el curso'
+        });
+    }
+};
+
+// Obtener los cursos creados por el instructor actual
+export const getInstructorCourses = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'No autorizado'
+            });
+        }
+
+        // Obtener los cursos donde el usuario es el autor
+        const cursos = await Course.find({ autor: userId })
+            .select('titulo descripcion nivel fechaCreacion imagenCurso premium publicado')
+            .sort({ fechaCreacion: -1 });
+
+        // Añadir información adicional para cada curso
+        const cursosConInfo = await Promise.all(cursos.map(async (curso) => {
+            // Contar estudiantes inscritos (opcional)
+            const estudiantes = await User.countDocuments({ cursosInscritos: curso._id });
+            
+            return {
+                ...curso.toObject(),
+                estudiantes
+            };
+        }));
+
+        res.status(200).json({
+            success: true,
+            count: cursosConInfo.length,
+            data: cursosConInfo
+        });
+    } catch (error: any) {
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Error al obtener los cursos del instructor'
         });
     }
 };
