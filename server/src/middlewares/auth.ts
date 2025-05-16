@@ -1,36 +1,50 @@
-// src/middlewares/auth.ts
+//server/src/middlewares/auth.ts
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken, TokenPayload } from '../utils/jwt';
+import jwt from 'jsonwebtoken';
+import { config } from '../config'; // ✅ Correcto - estás importando la configuración de la manera adecuada
 
-/**
- * Middleware para autenticación con JWT
- */
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+// Middleware de autenticación
+export const authenticate = (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Añade este console.log para depuración
+        console.log("Headers de autorización:", req.headers.authorization);
+        
         // Obtener el token del header
         const authHeader = req.headers.authorization;
-        
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({
                 success: false,
-                message: 'Acceso denegado. Se requiere token de autenticación'
+                message: 'No hay token, autorización denegada'
             });
         }
-        
-        // Extraer el token
-        const token = authHeader.split(' ')[1];
-        
+
         // Verificar el token
-        const decodedToken = verifyToken(token);
+        const token = authHeader.split(' ')[1];
+        console.log("Token extraído:", token.substring(0, 20) + "...");
         
-        // Añadir el usuario al request
-        req.user = decodedToken;
-        
-        next();
+        try {
+            const decodedToken = jwt.verify(token, config.jwtSecret);
+            console.log("Token decodificado:", decodedToken);
+            
+            // Añadir el usuario a la request
+            req.user = {
+                userId: (decodedToken as jwt.JwtPayload).userId || (decodedToken as jwt.JwtPayload).id, // Permite ambos formatos
+                role: (decodedToken as jwt.JwtPayload).role
+            };
+
+            next();
+        } catch (tokenError) {
+            console.error("Error al verificar token:", tokenError);
+            return res.status(401).json({
+                success: false,
+                message: 'Token no válido o expirado'
+            });
+        }
     } catch (error) {
-        return res.status(401).json({
+        console.error("Error general en autenticación:", error);
+        res.status(401).json({
             success: false,
-            message: 'Token inválido o expirado'
+            message: 'Error de autenticación'
         });
     }
 };

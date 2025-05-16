@@ -1,69 +1,4 @@
-// server/src/models/Course.ts
 import mongoose, { Document, Schema } from 'mongoose';
-
-// Esquema para recursos adicionales
-interface IRecursoAdicional {
-    titulo: string;
-    url: string;
-    tipo: 'pdf' | 'link' | 'video' | 'otro';
-}
-
-// Esquema para lecciones
-interface ILeccion {
-    titulo: string;
-    descripcion?: string;
-    tipo: 'video' | 'texto' | 'quiz';
-    contenido: string;
-    videoUrl?: string;
-    duracion?: number;
-    orden: number;
-    recursosAdicionales?: IRecursoAdicional[];
-}
-
-const LeccionSchema = new Schema<ILeccion>({
-    titulo: {
-        type: String,
-        required: [true, 'El título de la lección es obligatorio'],
-        trim: true
-    },
-    descripcion: String,
-    tipo: {
-        type: String,
-        enum: ['video', 'texto', 'quiz'],
-        required: true
-    },
-    contenido: String,
-    videoUrl: String,
-    duracion: Number,
-    orden: Number,
-    recursosAdicionales: [{
-        titulo: String,
-        url: String,
-        tipo: {
-            type: String,
-            enum: ['pdf', 'link', 'video', 'otro']
-        }
-    }]
-});
-
-// Esquema para módulos
-interface IModulo {
-    titulo: string;
-    descripcion?: string;
-    orden: number;
-    lecciones: ILeccion[];
-}
-
-const ModuloSchema = new Schema<IModulo>({
-    titulo: {
-        type: String,
-        required: [true, 'El título del módulo es obligatorio'],
-        trim: true
-    },
-    descripcion: String,
-    orden: Number,
-    lecciones: [LeccionSchema]
-});
 
 // Interfaz para Course
 export interface ICourse extends Document {
@@ -71,7 +6,7 @@ export interface ICourse extends Document {
     descripcion: string;
     premium: boolean;
     autor: mongoose.Types.ObjectId;
-    modulos: IModulo[];
+    modulos: mongoose.Types.ObjectId[]; // Ahora es un array de referencias
     etiquetas: string[];
     fechaCreacion: Date;
     fechaActualizacion: Date;
@@ -105,7 +40,10 @@ const courseSchema = new Schema<ICourse>({
         ref: 'User',
         required: true,
     },
-    modulos: [ModuloSchema],
+    modulos: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Module'
+    }],
     etiquetas: [{
         type: String,
         trim: true

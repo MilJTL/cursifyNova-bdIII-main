@@ -63,5 +63,6 @@ const lessonSchema = new Schema<ILesson>({
 }, {
     timestamps: true
 });
-
+// Añadir al final del schema, antes de exportar el modelo
+lessonSchema.index({ titulo: 'text', contenido: 'text' });
 export default mongoose.model<ILesson>('Lesson', lessonSchema);

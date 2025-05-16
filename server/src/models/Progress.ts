@@ -3,50 +3,47 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IProgress extends Document {
     userId: mongoose.Types.ObjectId;
-    cursoId: mongoose.Types.ObjectId;
-    leccionesCompletadas: mongoose.Types.ObjectId[];
-    ultimaLeccion: mongoose.Types.ObjectId;
-    porcentajeCompletado: number;
+    courseId: mongoose.Types.ObjectId;
+    lessonesCompletadas: mongoose.Types.ObjectId[];
     fechaInicio: Date;
-    fechaUltimaActividad: Date;
+    ultimoAcceso: Date;
+    porcentajeCompletado: number;
 }
 
 const progressSchema = new Schema<IProgress>({
     userId: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: true
     },
-    cursoId: {
+    courseId: {
         type: Schema.Types.ObjectId,
         ref: 'Course',
-        required: true,
+        required: true
     },
-    leccionesCompletadas: [{
+    lessonesCompletadas: [{
         type: Schema.Types.ObjectId,
-        ref: 'Lesson',
+        ref: 'Lesson'
     }],
-    ultimaLeccion: {
-        type: Schema.Types.ObjectId,
-        ref: 'Lesson',
+    fechaInicio: {
+        type: Date,
+        default: Date.now
+    },
+    ultimoAcceso: {
+        type: Date,
+        default: Date.now
     },
     porcentajeCompletado: {
         type: Number,
         default: 0,
-    },
-    fechaInicio: {
-        type: Date,
-        default: Date.now,
-    },
-    fechaUltimaActividad: {
-        type: Date,
-        default: Date.now,
-    },
+        min: 0,
+        max: 100
+    }
 }, {
     timestamps: true
 });
 
-// Índice compuesto para buscar rápido por usuario y curso
-progressSchema.index({ userId: 1, cursoId: 1 }, { unique: true });
+// Crear índice compuesto para búsqueda eficiente
+progressSchema.index({ userId: 1, courseId: 1 }, { unique: true });
 
 export default mongoose.model<IProgress>('Progress', progressSchema);

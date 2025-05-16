@@ -3,96 +3,99 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 interface CourseCardProps {
-    _id: string;
-    titulo: string;
-    autor: {
-        nombre: string;
-        username: string;
-        avatarUrl?: string;
+    course: {
+        _id: string;
+        titulo: string;
+        descripcion: string;
+        imagenCurso?: string;
+        precio?: number;
+        nivel: string;
+        duracionEstimada: string;
+        calificacion?: number;
+        autor: {
+            nombre: string;
+            avatarUrl?: string;
+        };
+        estudiantes?: number;
     };
-    imagenCurso: string;
-    nivel: string;
-    etiquetas: string[];
-    duracionEstimada: string;
-    premium: boolean;
 }
 
-const CourseCard: React.FC<CourseCardProps> = ({
-    _id,
-    titulo,
-    autor,
-    imagenCurso,
-    nivel,
-    etiquetas,
-    duracionEstimada,
-    premium
-}) => {
-    // Mapear niveles a colores
-    const nivelColor = {
-        'principiante': 'bg-green-100 text-green-800',
-        'intermedio': 'bg-blue-100 text-blue-800',
-        'avanzado': 'bg-purple-100 text-purple-800'
-    }[nivel] || 'bg-gray-100 text-gray-800';
+const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
+    // Función para determinar el color del badge de nivel
+    const getNivelBadgeClass = () => {
+        switch (course.nivel) {
+            case 'principiante':
+                return 'bg-green-100 text-green-800';
+            case 'intermedio':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'avanzado':
+                return 'bg-red-100 text-red-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
+    };
 
     return (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col h-full transition-transform hover:translate-y-[-5px]">
-            <div className="relative">
-                <img
-                    src={imagenCurso || 'https://via.placeholder.com/300x200?text=CursifyNova'}
-                    alt={titulo}
-                    className="w-full h-48 object-cover"
-                />
-                {premium && (
-                    <span className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 text-xs font-semibold px-2 py-1 rounded">
-                        PREMIUM
-                    </span>
-                )}
-            </div>
+        <div className="bg-white rounded-lg shadow-md overflow-hidden transition-transform hover:-translate-y-1 hover:shadow-lg">
+            <Link to={`/courses/${course._id}`}>
+                <div className="h-40 overflow-hidden relative">
+                    <img
+                        src={course.imagenCurso || 'https://via.placeholder.com/300x200?text=Curso'}
+                        alt={course.titulo}
+                        className="w-full h-full object-cover"
+                    />
+                    {course.precio !== undefined && (
+                        <div className="absolute top-3 right-3 bg-blue-600 text-white font-medium py-1 px-2 rounded">
+                            {course.precio === 0 ? 'Gratuito' : `$${course.precio.toFixed(2)}`}
+                        </div>
+                    )}
+                </div>
+            </Link>
 
-            <div className="p-4 flex-grow">
-                <div className="flex gap-2 mb-2">
-                    <span className={`text-xs px-2 py-1 rounded ${nivelColor}`}>
-                        {nivel.charAt(0).toUpperCase() + nivel.slice(1)}
+            <div className="p-4">
+                <div className="flex justify-between mb-2">
+                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${getNivelBadgeClass()}`}>
+                        {course.nivel.charAt(0).toUpperCase() + course.nivel.slice(1)}
                     </span>
-                    <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">
-                        {duracionEstimada}
-                    </span>
+
+                    {course.calificacion !== undefined && (
+                        <div className="flex items-center">
+                            <svg className="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118l-2.8-2.034c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                            <span className="ml-1 text-sm text-gray-600">{course.calificacion.toFixed(1)}</span>
+                        </div>
+                    )}
                 </div>
 
-                <Link to={`/courses/${_id}`} className="block">
-                    <h3 className="text-lg font-bold text-gray-800 hover:text-blue-600 line-clamp-2">{titulo}</h3>
+                <Link to={`/courses/${course._id}`} className="block">
+                    <h3 className="font-bold text-lg mb-2 hover:text-blue-600 transition-colors">
+                        {course.titulo}
+                    </h3>
                 </Link>
 
-                <div className="flex items-center mt-3">
-                    <img
-                        src={autor.avatarUrl || 'https://via.placeholder.com/40'}
-                        alt={autor.nombre}
-                        className="w-8 h-8 rounded-full mr-2"
-                    />
-                    <span className="text-sm text-gray-600">{autor.nombre}</span>
-                </div>
+                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    {course.descripcion}
+                </p>
 
-                <div className="flex flex-wrap gap-1 mt-3">
-                    {etiquetas.slice(0, 3).map((tag, index) => (
-                        <span key={index} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                            {tag}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                        <img
+                            src={course.autor.avatarUrl || 'https://via.placeholder.com/30x30'}
+                            alt={course.autor.nombre}
+                            className="w-6 h-6 rounded-full mr-2"
+                        />
+                        <span className="text-sm text-gray-700">
+                            {course.autor.nombre}
                         </span>
-                    ))}
-                    {etiquetas.length > 3 && (
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                            +{etiquetas.length - 3}
+                    </div>
+
+                    {course.estudiantes !== undefined && (
+                        <span className="text-xs text-gray-500">
+                            {course.estudiantes} estudiantes
                         </span>
                     )}
                 </div>
-            </div>
-
-            <div className="p-4 border-t border-gray-100">
-                <Link
-                    to={`/courses/${_id}`}
-                    className="block w-full bg-blue-600 hover:bg-blue-700 text-white py-2 text-center rounded transition"
-                >
-                    Ver detalles
-                </Link>
             </div>
         </div>
     );

@@ -1,26 +1,29 @@
-// src/utils/jwt.ts
-const jwt = require('jsonwebtoken');
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'cursifynova_secret_key';
-const JWT_EXPIRE = process.env.JWT_EXPIRE || '30d';
+import jwt from 'jsonwebtoken';
+import { config } from '../config';
 
 export interface TokenPayload {
     userId: string;
     role: string;
+    [key: string]: any; // Permite propiedades adicionales
 }
 
 export const generateToken = (payload: TokenPayload): string => {
-    return jwt.sign(payload, JWT_SECRET, {
-        expiresIn: JWT_EXPIRE,
-    });
+    // Usar aserción de tipo para evitar errores con expiresIn
+    const options = {
+        expiresIn: config.jwtExpire
+    } as jwt.SignOptions;
+    
+    return jwt.sign(
+        payload as object, 
+        config.jwtSecret as string,
+        options
+    );
 };
 
 export const verifyToken = (token: string): TokenPayload => {
     try {
-        return jwt.verify(token, JWT_SECRET) as TokenPayload;
+        // Solución: Añadir aserciones de tipo
+        return jwt.verify(token, config.jwtSecret as string) as TokenPayload;
     } catch (error) {
         throw new Error('Token inválido o expirado');
     }

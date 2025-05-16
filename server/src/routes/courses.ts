@@ -7,10 +7,11 @@ import {
     updateCourse, 
     deleteCourse,
     enrollCourse,
-    addModuleToCourse,
-    getInstructorCourses
+    //addModuleToCourse,
+    getInstructorCourses,
+    getFullCourse
 } from '../controllers/courseController';
-import { authenticate } from '../middlewares/auth';
+import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
 
@@ -19,9 +20,10 @@ router.get('/', getCourses);
 
 // Rutas protegidas - Específicas primero
 router.get('/instructor', authenticate, getInstructorCourses);  // Esta debe ir ANTES de /:id
+router.get('/:id/full', authenticate, getFullCourse);
 router.post('/', authenticate, createCourse);
 router.post('/:id/enroll', authenticate, enrollCourse);
-router.post('/:id/modules', authenticate, addModuleToCourse);
+//router.post('/:id/modules', authenticate, authorize(['instructor', 'admin']), addModuleToCourse);
 router.put('/:id', authenticate, updateCourse);
 router.delete('/:id', authenticate, deleteCourse);
 

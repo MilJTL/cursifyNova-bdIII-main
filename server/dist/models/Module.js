@@ -60,4 +60,6 @@ const moduleSchema = new mongoose_1.Schema({
 }, {
     timestamps: true
 });
+// Añadir al final del schema, antes de exportar el modelo
+moduleSchema.index({ titulo: 'text', descripcion: 'text' });
 exports.default = mongoose_1.default.model('Module', moduleSchema);

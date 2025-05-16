@@ -1,9 +1,25 @@
 // src/api/auth.ts
-import axios from 'axios';
+import apiClient from './client';
 
-const API_URL = 'http://localhost:5000/api';
+export interface User {
+    id: string;
+    nombre: string;
+    username: string;
+    email: string;
+    rol: string;
+    premium: boolean;
+    avatarUrl?: string;
+    biografia?: string;
+    intereses?: string[];
+    fechaRegistro: string;
 
-// Interfaces
+}
+
+export interface LoginCredentials {
+    email: string;
+    password: string;
+}
+
 export interface RegisterData {
     nombre: string;
     username: string;
@@ -12,148 +28,82 @@ export interface RegisterData {
     intereses?: string[];
 }
 
-export interface LoginData {
-    email: string;
-    password: string;
-}
-
-export interface UserData {
-    id: string;
-    nombre: string;
-    username: string;
-    email: string;
-    rol: 'usuario' | 'admin';
-    premium: boolean;
-    intereses: string[];
-    avatarUrl?: string;
-    biografia?: string;
-}
-
 export interface AuthResponse {
     success: boolean;
     token: string;
-    user: UserData;
+    user: User;
 }
 
-// Instancia de axios con configuración común
-const authApi = axios.create({
-    baseURL: API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    timeout: 10000, // Añadir un timeout de 10 segundos para evitar bloqueos
-});
+export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+    const response = await apiClient.post('/auth/login', credentials);
 
-// Configurar interceptor para añadir token a las solicitudes
-authApi.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
+    // Guardar el token en localStorage
+    if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
     }
-);
 
-// Funciones para la API
+    return response.data;
+};
+
 export const register = async (userData: RegisterData): Promise<AuthResponse> => {
-    try {
-        const response = await authApi.post<AuthResponse>('/auth/register', userData);
-        // Guardar token en localStorage
+    const response = await apiClient.post('/auth/register', userData);
+
+    // Guardar el token en localStorage
+    if (response.data.token) {
         localStorage.setItem('token', response.data.token);
-        return response.data;
-    } catch (error: unknown) {
-        console.error('Error en registro:', error);
-        if (axios.isAxiosError(error) && error.response?.data?.message) {
-            throw new Error(error.response.data.message);
-        }
-        throw new Error('Error al registrar usuario');
+        localStorage.setItem('user', JSON.stringify(response.data.user));
     }
+
+    return response.data;
 };
 
-export const login = async (credentials: LoginData): Promise<AuthResponse> => {
-    try {
-        console.log('Intentando login con:', credentials.email);
-        const response = await authApi.post<AuthResponse>('/auth/login', credentials);
-        // Guardar token en localStorage
-        localStorage.setItem('token', response.data.token);
-        console.log('Login exitoso, token guardado');
-        return response.data;
-    } catch (error: unknown) {
-        console.error('Error en login:', error);
-        if (axios.isAxiosError(error) && error.response?.data?.message) {
-            throw new Error(error.response.data.message);
-        }
-        throw new Error('Error al iniciar sesión');
-    }
+export const getProfile = async (): Promise<User> => {
+    const response = await apiClient.get('/auth/me');
+    return response.data.user;
 };
 
-export const getProfile = async (): Promise<UserData> => {
-    try {
-        console.log('Obteniendo perfil de usuario...');
-        const response = await authApi.get<{ success: boolean; user: UserData }>('/auth/me');
-        console.log('Perfil obtenido:', response.data.user);
-        return response.data.user;
-    } catch (error: unknown) {
-        console.error('Error al obtener perfil:', error);
-        if (axios.isAxiosError(error) && error.response?.data?.message) {
-            throw new Error(error.response.data.message);
-        }
-        throw new Error('Error al obtener perfil');
+export const updateProfile = async (profileData: Partial<User>): Promise<User> => {
+    const response = await apiClient.put('/auth/profile', profileData);
+
+    // Actualizar la información del usuario en localStorage
+    if (response.data.user) {
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({
+            ...currentUser,
+            ...response.data.user
+        }));
     }
+
+    return response.data.user;
 };
 
-export const updateProfile = async (profileData: Partial<UserData>): Promise<UserData> => {
-    try {
-        const response = await authApi.put<{ success: boolean; user: UserData }>('/auth/profile', profileData);
-        return response.data.user;
-    } catch (error: unknown) {
-        console.error('Error al actualizar perfil:', error);
-        if (axios.isAxiosError(error) && error.response?.data?.message) {
-            throw new Error(error.response.data.message);
-        }
-        throw new Error('Error al actualizar perfil');
-    }
-};
-
-export const logout = (): void => {
-    console.log('Cerrando sesión...');
+export const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
 };
 
+export const isAuthenticated = (): boolean => {
+    return !!localStorage.getItem('token');
+};
+
+export const getCurrentUser = (): User | null => {
+    const userJson = localStorage.getItem('user');
+    return userJson ? JSON.parse(userJson) : null;
+};
+//** agregado */
 export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
-    try {
-        await authApi.put('/auth/change-password', { currentPassword, newPassword });
-    } catch (error: unknown) {
-        console.error('Error al cambiar contraseña:', error);
-        if (axios.isAxiosError(error) && error.response?.data?.message) {
-            throw new Error(error.response.data.message);
+    await apiClient.put('/auth/password', { currentPassword, newPassword });
+};
+export const uploadAvatar = async (avatarFile: File): Promise<{ url: string }> => {
+    const formData = new FormData();
+    formData.append('avatar', avatarFile);
+    
+    const response = await apiClient.post('/auth/avatar', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
         }
-        throw new Error('Error al cambiar contraseña');
-    }
-};
-
-// Función auxiliar para verificar si el backend está disponible
-export const checkServerAvailability = async (): Promise<boolean> => {
-    try {
-        await axios.get(`${API_URL}/health`, { timeout: 3000 });
-        console.log('Servidor disponible');
-        return true;
-    } catch (error) {
-        console.error('Servidor no disponible:', error);
-        return false;
-    }
-};
-
-export default {
-    register,
-    login,
-    getProfile,
-    updateProfile,
-    logout,
-    changePassword,
-    checkServerAvailability,
+    });
+    
+    return response.data;
 };

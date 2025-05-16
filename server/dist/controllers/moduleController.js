@@ -6,10 +6,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.reorderModules = exports.deleteModule = exports.updateModule = exports.createModule = exports.getModuleById = exports.getModulesByCourse = void 0;
 const Module_1 = __importDefault(require("../models/Module"));
 const Course_1 = __importDefault(require("../models/Course"));
+const Lesson_1 = __importDefault(require("../models/Lesson"));
 // Obtener todos los módulos de un curso
 const getModulesByCourse = async (req, res) => {
     try {
-        const cursoId = req.params.cursoId;
+        // CORREGIDO: Obtener desde query params en lugar de route params
+        const cursoId = req.query.cursoId;
+        if (!cursoId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Se requiere un ID de curso'
+            });
+        }
         const modules = await Module_1.default.find({ cursoId })
             .sort({ ordenIndice: 1 })
             .populate('lecciones');
@@ -161,6 +169,8 @@ const deleteModule = async (req, res) => {
                 message: 'No tienes permiso para eliminar este módulo'
             });
         }
+        // Eliminar todas las lecciones asociadas al módulo
+        await Lesson_1.default.deleteMany({ moduloId: moduleId });
         // Eliminar el módulo
         await Module_1.default.findByIdAndDelete(moduleId);
         // Actualizar el curso para eliminar la referencia al módulo

@@ -3,9 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getInstructorCourses = exports.deleteCourse = exports.addModuleToCourse = exports.updateCourse = exports.enrollCourse = exports.createCourse = exports.getCourseById = exports.getCourses = void 0;
+exports.getInstructorCourses = exports.deleteCourse = exports.updateCourse = exports.enrollCourse = exports.createCourse = exports.getFullCourse = exports.getCourseById = exports.getCourses = void 0;
 const Course_1 = __importDefault(require("../models/Course"));
 const User_1 = __importDefault(require("../models/User"));
+const Module_1 = __importDefault(require("../models/Module"));
+const Lesson_1 = __importDefault(require("../models/Lesson"));
 // Obtener todos los cursos
 const getCourses = async (req, res) => {
     try {
@@ -22,7 +24,7 @@ const getCourses = async (req, res) => {
         if (busqueda) {
             query.$text = { $search: busqueda.toString() };
         }
-        // Añadir paginación
+        // Aplicar paginación
         const pageNum = parseInt(page.toString(), 10);
         const limitNum = parseInt(limit.toString(), 10);
         const skip = (pageNum - 1) * limitNum;
@@ -74,6 +76,44 @@ const getCourseById = async (req, res) => {
     }
 };
 exports.getCourseById = getCourseById;
+// Obtener curso completo con módulos y lecciones
+const getFullCourse = async (req, res) => {
+    try {
+        const courseId = req.params.id;
+        // Buscar el curso
+        const curso = await Course_1.default.findById(courseId)
+            .populate('autor', 'nombre username avatarUrl biografia');
+        if (!curso) {
+            return res.status(404).json({
+                success: false,
+                message: 'Curso no encontrado'
+            });
+        }
+        // Buscar los módulos del curso
+        const modulos = await Module_1.default.find({ cursoId: courseId })
+            .sort({ ordenIndice: 1 })
+            .populate({
+            path: 'lecciones',
+            options: { sort: { ordenIndice: 1 } }
+        });
+        // Formatear la respuesta
+        const cursoCompleto = {
+            ...curso.toObject(),
+            modulos
+        };
+        res.status(200).json({
+            success: true,
+            data: cursoCompleto
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Error al obtener el curso completo'
+        });
+    }
+};
+exports.getFullCourse = getFullCourse;
 // Crear curso
 const createCourse = async (req, res) => {
     var _a;
@@ -95,7 +135,8 @@ const createCourse = async (req, res) => {
         }
         const cursoData = {
             ...req.body,
-            autor: userId
+            autor: userId,
+            modulos: [] // Inicializar con un array vacío de referencias a módulos
         };
         const curso = await Course_1.default.create(cursoData);
         // Añadir el curso a los cursos creados por el usuario
@@ -194,62 +235,6 @@ const updateCourse = async (req, res) => {
     }
 };
 exports.updateCourse = updateCourse;
-// Añadir un módulo a un curso
-const addModuleToCourse = async (req, res) => {
-    var _a;
-    try {
-        const courseId = req.params.id;
-        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
-        // Verificar si el curso existe
-        const course = await Course_1.default.findById(courseId);
-        if (!course) {
-            return res.status(404).json({
-                success: false,
-                message: 'Curso no encontrado'
-            });
-        }
-        // Verificar si el usuario es el autor del curso
-        if (course.autor.toString() !== userId) {
-            return res.status(403).json({
-                success: false,
-                message: 'No tienes permiso para modificar este curso'
-            });
-        }
-        // Crear el nuevo módulo
-        const { titulo, descripcion } = req.body;
-        if (!titulo) {
-            return res.status(400).json({
-                success: false,
-                message: 'El título del módulo es obligatorio'
-            });
-        }
-        // Calcular el orden del nuevo módulo
-        const orden = course.modulos.length + 1;
-        // Añadir el módulo al curso
-        const updatedCourse = await Course_1.default.findByIdAndUpdate(courseId, {
-            $push: {
-                modulos: {
-                    titulo,
-                    descripcion,
-                    orden,
-                    lecciones: []
-                }
-            },
-            fechaActualizacion: Date.now()
-        }, { new: true });
-        res.status(200).json({
-            success: true,
-            data: updatedCourse
-        });
-    }
-    catch (error) {
-        res.status(400).json({
-            success: false,
-            message: error.message || 'Error al añadir el módulo'
-        });
-    }
-};
-exports.addModuleToCourse = addModuleToCourse;
 // Eliminar un curso
 const deleteCourse = async (req, res) => {
     var _a, _b;
@@ -271,6 +256,14 @@ const deleteCourse = async (req, res) => {
                 message: 'No tienes permiso para eliminar este curso'
             });
         }
+        // Encontrar todos los módulos del curso
+        const modulos = await Module_1.default.find({ cursoId: courseId });
+        // Eliminar todas las lecciones de cada módulo
+        for (const modulo of modulos) {
+            await Lesson_1.default.deleteMany({ moduloId: modulo._id });
+        }
+        // Eliminar todos los módulos
+        await Module_1.default.deleteMany({ cursoId: courseId });
         // Eliminar el curso
         await Course_1.default.findByIdAndDelete(courseId);
         // Eliminar la referencia del curso en los usuarios inscritos

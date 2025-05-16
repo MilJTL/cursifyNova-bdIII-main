@@ -1,11 +1,20 @@
 import { Request, Response } from 'express';
 import Module from '../models/Module';
 import Course from '../models/Course';
+import Lesson from '../models/Lesson';
 
 // Obtener todos los módulos de un curso
 export const getModulesByCourse = async (req: Request, res: Response) => {
     try {
-        const cursoId = req.params.cursoId;
+        // CORREGIDO: Obtener desde query params en lugar de route params
+        const cursoId = req.query.cursoId as string;
+        
+        if (!cursoId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Se requiere un ID de curso'
+            });
+        }
 
         const modules = await Module.find({ cursoId })
             .sort({ ordenIndice: 1 })
@@ -174,6 +183,9 @@ export const deleteModule = async (req: Request, res: Response) => {
                 message: 'No tienes permiso para eliminar este módulo'
             });
         }
+
+        // Eliminar todas las lecciones asociadas al módulo
+        await Lesson.deleteMany({ moduloId: moduleId });
 
         // Eliminar el módulo
         await Module.findByIdAndDelete(moduleId);

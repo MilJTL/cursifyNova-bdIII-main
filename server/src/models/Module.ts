@@ -34,5 +34,7 @@ const moduleSchema = new Schema<IModule>({
 }, {
     timestamps: true
 });
+// Añadir al final del schema, antes de exportar el modelo
+moduleSchema.index({ titulo: 'text', descripcion: 'text' });
 
 export default mongoose.model<IModule>('Module', moduleSchema);

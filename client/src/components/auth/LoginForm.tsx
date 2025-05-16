@@ -2,11 +2,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../../api/auth';
-import useAuth from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 
 const LoginForm: React.FC = () => {
     const navigate = useNavigate();
-    const { setUser } = useAuth();
+    const { updateUser } = useAuth();
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -30,7 +30,7 @@ const LoginForm: React.FC = () => {
 
             const response = await login(formData);
 
-            setUser(response.user);
+            updateUser(response.user);
             navigate('/'); // Redirigir al dashboard
 
         } catch (err: unknown) {

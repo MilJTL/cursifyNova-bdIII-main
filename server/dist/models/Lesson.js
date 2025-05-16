@@ -82,4 +82,6 @@ const lessonSchema = new mongoose_1.Schema({
 }, {
     timestamps: true
 });
+// Añadir al final del schema, antes de exportar el modelo
+lessonSchema.index({ titulo: 'text', contenido: 'text' });
 exports.default = mongoose_1.default.model('Lesson', lessonSchema);

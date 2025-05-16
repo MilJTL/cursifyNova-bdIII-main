@@ -3,11 +3,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../../api/auth';
 import type { RegisterData } from '../../api/auth';
-import useAuth from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 
 const RegisterForm: React.FC = () => {
     const navigate = useNavigate();
-    const { setUser } = useAuth();
+    const { updateUser } = useAuth();
     const [formData, setFormData] = useState<RegisterData>({
         nombre: '',
         username: '',
@@ -69,7 +69,7 @@ const RegisterForm: React.FC = () => {
 
             const response = await register(formData);
 
-            setUser(response.user);
+            updateUser(response.user);
             navigate('/'); // Redirigir al dashboard
 
         } catch (err: unknown) {

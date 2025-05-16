@@ -33,43 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-// server/src/models/Course.ts
 const mongoose_1 = __importStar(require("mongoose"));
-const LeccionSchema = new mongoose_1.Schema({
-    titulo: {
-        type: String,
-        required: [true, 'El título de la lección es obligatorio'],
-        trim: true
-    },
-    descripcion: String,
-    tipo: {
-        type: String,
-        enum: ['video', 'texto', 'quiz'],
-        required: true
-    },
-    contenido: String,
-    videoUrl: String,
-    duracion: Number,
-    orden: Number,
-    recursosAdicionales: [{
-            titulo: String,
-            url: String,
-            tipo: {
-                type: String,
-                enum: ['pdf', 'link', 'video', 'otro']
-            }
-        }]
-});
-const ModuloSchema = new mongoose_1.Schema({
-    titulo: {
-        type: String,
-        required: [true, 'El título del módulo es obligatorio'],
-        trim: true
-    },
-    descripcion: String,
-    orden: Number,
-    lecciones: [LeccionSchema]
-});
 // Esquema principal del curso
 const courseSchema = new mongoose_1.Schema({
     titulo: {
@@ -92,7 +56,10 @@ const courseSchema = new mongoose_1.Schema({
         ref: 'User',
         required: true,
     },
-    modulos: [ModuloSchema],
+    modulos: [{
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: 'Module'
+        }],
     etiquetas: [{
             type: String,
             trim: true
