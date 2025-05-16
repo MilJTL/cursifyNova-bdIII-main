@@ -1,3 +1,4 @@
+// ruta: src/models/Certificate.ts
 import mongoose, { Document, Schema } from 'mongoose';
 import crypto from 'crypto';
 

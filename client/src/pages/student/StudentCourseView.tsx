@@ -1,33 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getCourseById, type Course } from '../../api/courses';
 import { getModulesByCourse, type Module } from '../../api/modules';
 import { getLessonsByModule, markLessonCompleted, type Lesson } from '../../api/lessons';
 import { updateLessonProgress } from '../../api/progress';
+import { 
+  getCommentsByLesson, 
+  createComment, 
+  updateComment, 
+  deleteComment, 
+  addReply, 
+  updateReply, 
+  deleteReply,
+  type Comment,
+  type Reply,
+  type NewComment
+} from '../../api/comments';
+import { 
+  checkCertificateEligibility, 
+  generateCertificate 
+} from '../../api/certificates';
 
 const StudentCourseView: React.FC = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
-  
+
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   // Estado para seguir el progreso
   const [completedLessons, setCompletedLessons] = useState<string[]>([]);
   const [activeModuleId, setActiveModuleId] = useState<string>('');
   const [activeLessonId, setActiveLessonId] = useState<string>('');
 
+  // Estados para comentarios
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState<string>('');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState<string>('');
+  const [editingComment, setEditingComment] = useState<string | null>(null);
+  const [editingReply, setEditingReply] = useState<{commentId: string, replyId: string} | null>(null);
+  const [editContent, setEditContent] = useState<string>('');
+  const [isLoadingComments, setIsLoadingComments] = useState<boolean>(false);
+  
+  // Ref para el formulario de comentarios
+  const commentFormRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const fetchCourseData = async () => {
       if (!courseId) return;
-      
+
       try {
         setIsLoading(true);
-        
+
         // Obtener datos del curso
         const courseData = await getCourseById(courseId);
         if (!courseData) {
@@ -35,18 +64,16 @@ const StudentCourseView: React.FC = () => {
           return;
         }
         setCourse(courseData);
-        
+
         // Obtener módulos del curso
-        // Usa getModulesByCourse en lugar de getModules
         const modulesData = await getModulesByCourse(courseId);
         setModules(modulesData);
-        
+
         // Establecer módulo activo inicial (primer módulo)
         if (modulesData.length > 0) {
           setActiveModuleId(modulesData[0]._id);
-          
+
           // Obtener lecciones del primer módulo
-          // Usa getLessonsByModule en lugar de getLessons
           const lessonsData = await getLessonsByModule(modulesData[0]._id);
           if (lessonsData.length > 0) {
             // Establecer primera lección como activa
@@ -54,11 +81,11 @@ const StudentCourseView: React.FC = () => {
             setCurrentLesson(lessonsData[0]);
           }
         }
-        
+
         // Cargar el progreso del estudiante
         // En un sistema real, obtendrías esto del backend
         setCompletedLessons(['lesson1', 'lesson2']); // IDs de ejemplo
-        
+
         setError(null);
       } catch (err) {
         console.error('Error cargando datos del curso:', err);
@@ -67,22 +94,77 @@ const StudentCourseView: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchCourseData();
   }, [courseId]);
-  
+
+  // Cargar comentarios cuando cambia la lección
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (!currentLesson) return;
+      
+      try {
+        setIsLoadingComments(true);
+        const commentsData = await getCommentsByLesson(currentLesson._id);
+        setComments(commentsData);
+      } catch (err) {
+        console.error('Error cargando comentarios:', err);
+      } finally {
+        setIsLoadingComments(false);
+      }
+    };
+
+    fetchComments();
+  }, [currentLesson]);
+
+  const formatYoutubeUrl = (url: string | undefined): string => {
+    if (!url) return '';
+    
+    // Si la URL ya está en formato de embed, usarla directamente
+    if (url.includes('youtube.com/embed/')) {
+      return url;
+    }
+    
+    try {
+      // Extraer el ID del video
+      let videoId = '';
+      
+      if (url.includes('youtube.com/watch')) {
+        const urlObj = new URL(url);
+        videoId = urlObj.searchParams.get('v') || '';
+      } else if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
+      } else {
+        // Si parece ser solo un ID de video, usarlo directamente
+        const possibleId = url.trim();
+        if (/^[a-zA-Z0-9_-]{11}$/.test(possibleId)) {
+          videoId = possibleId;
+        }
+      }
+      
+      if (videoId) {
+        // Asegurar que se use https y que se añada cualquier parámetro adicional
+        return `https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`;
+      }
+    } catch (error) {
+      console.error('Error al procesar URL de YouTube:', error, url);
+    }
+    
+    // En caso de error, intentar usar la URL directa como embed
+    return `https://www.youtube.com/embed/${url.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  };
+
   const handleLessonSelect = async (moduleId: string, lessonId: string) => {
     try {
       // Cargar la lección seleccionada
-      // Usa getLessonsByModule en lugar de getLessons
       const lessonsData = await getLessonsByModule(moduleId);
       const selectedLesson = lessonsData.find((lesson: Lesson) => lesson._id === lessonId);
-      
+
       if (selectedLesson) {
         setCurrentLesson(selectedLesson);
         setActiveModuleId(moduleId);
         setActiveLessonId(lessonId);
-        
+
         // En móvil, cerrar sidebar después de seleccionar
         if (window.innerWidth < 768) {
           setSidebarOpen(false);
@@ -92,14 +174,14 @@ const StudentCourseView: React.FC = () => {
       console.error('Error cargando lección:', err);
     }
   };
-  
+
   const markLessonComplete = async () => {
     if (!currentLesson) return;
-    
+
     try {
       // Actualizar progreso en el backend usando markLessonCompleted
       await markLessonCompleted(currentLesson._id);
-      
+
       // También registramos tiempo de visualización si es necesario
       if (currentLesson.tipo === 'video') {
         await updateLessonProgress(currentLesson._id, {
@@ -107,12 +189,12 @@ const StudentCourseView: React.FC = () => {
           timeSpent: 300 // Ejemplo: 300 segundos
         });
       }
-      
+
       // Actualizar estado local
-      setCompletedLessons(prev => 
+      setCompletedLessons(prev =>
         prev.includes(currentLesson._id) ? prev : [...prev, currentLesson._id]
       );
-      
+
       // Mostrar mensaje de éxito o manejar navegación a la siguiente lección
     } catch (err) {
       console.error('Error actualizando progreso:', err);
@@ -122,30 +204,30 @@ const StudentCourseView: React.FC = () => {
   // Función para encontrar la lección anterior y siguiente
   const findAdjacentLessons = () => {
     if (!currentLesson || !modules.length) return { prevLesson: null, nextLesson: null };
-    
+
     let prevLesson = null;
     let nextLesson = null;
-    
+
     // Encontrar el índice del módulo actual
     const currentModuleIndex = modules.findIndex(m => m._id === activeModuleId);
-    
+
     if (currentModuleIndex === -1) return { prevLesson: null, nextLesson: null };
-    
+
     // Obtener todas las lecciones de este módulo
     const currentModuleLessons = modules[currentModuleIndex].lecciones || [];
-    
+
     // Encontrar el índice de la lección actual en su módulo
     const currentLessonIndex = currentModuleLessons.findIndex(l => l._id === activeLessonId);
-    
+
     if (currentLessonIndex === -1) return { prevLesson: null, nextLesson: null };
-    
+
     // Verificar si hay una lección anterior en el mismo módulo
     if (currentLessonIndex > 0) {
       prevLesson = {
         moduleId: activeModuleId,
         lessonId: currentModuleLessons[currentLessonIndex - 1]._id
       };
-    } 
+    }
     // Si no hay lección anterior en este módulo, buscar en el módulo anterior
     else if (currentModuleIndex > 0) {
       const prevModuleLessons = modules[currentModuleIndex - 1].lecciones || [];
@@ -156,14 +238,14 @@ const StudentCourseView: React.FC = () => {
         };
       }
     }
-    
+
     // Verificar si hay una lección siguiente en el mismo módulo
     if (currentLessonIndex < currentModuleLessons.length - 1) {
       nextLesson = {
         moduleId: activeModuleId,
         lessonId: currentModuleLessons[currentLessonIndex + 1]._id
       };
-    } 
+    }
     // Si no hay lección siguiente en este módulo, buscar en el módulo siguiente
     else if (currentModuleIndex < modules.length - 1) {
       const nextModuleLessons = modules[currentModuleIndex + 1].lecciones || [];
@@ -174,22 +256,123 @@ const StudentCourseView: React.FC = () => {
         };
       }
     }
-    
+
     return { prevLesson, nextLesson };
   };
-  
+
   const { prevLesson, nextLesson } = findAdjacentLessons();
-  
+
   const navigateToPrevLesson = () => {
     if (prevLesson) {
       handleLessonSelect(prevLesson.moduleId, prevLesson.lessonId);
     }
   };
-  
+
   const navigateToNextLesson = () => {
     if (nextLesson) {
       handleLessonSelect(nextLesson.moduleId, nextLesson.lessonId);
     }
+  };
+
+  // Funciones para el manejo de comentarios
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentLesson || !newComment.trim()) return;
+
+    try {
+      const commentData = await createComment(currentLesson._id, { contenido: newComment });
+      if (commentData) {
+        setComments([commentData, ...comments]);
+        setNewComment('');
+      }
+    } catch (error) {
+      console.error('Error al crear comentario:', error);
+    }
+  };
+
+  const handleSubmitReply = async (commentId: string) => {
+    if (!replyContent.trim()) return;
+
+    try {
+      const updatedComment = await addReply(commentId, { contenido: replyContent });
+      if (updatedComment) {
+        setComments(comments.map(c => c._id === commentId ? updatedComment : c));
+        setReplyingTo(null);
+        setReplyContent('');
+      }
+    } catch (error) {
+      console.error('Error al añadir respuesta:', error);
+    }
+  };
+
+  const handleUpdateComment = async (commentId: string) => {
+    if (!editContent.trim()) return;
+
+    try {
+      const updatedComment = await updateComment(commentId, { contenido: editContent });
+      if (updatedComment) {
+        setComments(comments.map(c => c._id === commentId ? updatedComment : c));
+        setEditingComment(null);
+        setEditContent('');
+      }
+    } catch (error) {
+      console.error('Error al actualizar comentario:', error);
+    }
+  };
+
+  const handleUpdateReply = async (commentId: string, replyId: string) => {
+    if (!editContent.trim()) return;
+
+    try {
+      const updatedComment = await updateReply(commentId, replyId, { contenido: editContent });
+      if (updatedComment) {
+        setComments(comments.map(c => c._id === commentId ? updatedComment : c));
+        setEditingReply(null);
+        setEditContent('');
+      }
+    } catch (error) {
+      console.error('Error al actualizar respuesta:', error);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este comentario?')) return;
+
+    try {
+      const success = await deleteComment(commentId);
+      if (success) {
+        setComments(comments.filter(c => c._id !== commentId));
+      }
+    } catch (error) {
+      console.error('Error al eliminar comentario:', error);
+    }
+  };
+
+  const handleDeleteReply = async (commentId: string, replyId: string) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar esta respuesta?')) return;
+
+    try {
+      const success = await deleteReply(commentId, replyId);
+      if (success) {
+        // Actualizar el estado de comentarios filtrando la respuesta eliminada
+        const updatedComments = comments.map(comment => {
+          if (comment._id === commentId) {
+            return {
+              ...comment,
+              respuestas: comment.respuestas.filter(reply => reply.id !== replyId)
+            };
+          }
+          return comment;
+        });
+        setComments(updatedComments);
+      }
+    } catch (error) {
+      console.error('Error al eliminar respuesta:', error);
+    }
+  };
+
+  const scrollToComments = () => {
+    commentFormRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   if (isLoading) {
@@ -207,8 +390,8 @@ const StudentCourseView: React.FC = () => {
           {error || 'Curso no encontrado'}
         </div>
         <div className="mt-4">
-          <Link 
-            to="/student/dashboard" 
+          <Link
+            to="/student/dashboard"
             className="text-blue-600 hover:text-blue-800"
           >
             ← Volver al Dashboard
@@ -224,7 +407,7 @@ const StudentCourseView: React.FC = () => {
       <header className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center">
-            <button 
+            <button
               onClick={() => navigate('/student/dashboard')}
               className="mr-4 text-gray-500 hover:text-gray-700"
               aria-label="Volver al dashboard"
@@ -235,9 +418,9 @@ const StudentCourseView: React.FC = () => {
             </button>
             <h1 className="text-xl font-bold text-gray-900 truncate max-w-md">{course.titulo}</h1>
           </div>
-          
+
           <div className="md:hidden">
-            <button 
+            <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="text-gray-500 hover:text-gray-700 focus:outline-none"
             >
@@ -251,37 +434,37 @@ const StudentCourseView: React.FC = () => {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar/Contenido del curso */}
-        <aside 
+        <aside
           className={`bg-gray-50 border-r border-gray-200 w-80 flex-shrink-0 overflow-y-auto transition-transform duration-300 transform 
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
             fixed md:static inset-y-0 left-0 z-30 md:z-0 pt-16 md:pt-0`}
         >
           <div className="p-4">
             <h2 className="text-lg font-semibold mb-4">Contenido del curso</h2>
-            
+
             <div className="space-y-4">
               {modules.map((module) => (
                 <div key={module._id} className="border border-gray-200 rounded-md overflow-hidden">
-                  <div 
+                  <div
                     className={`px-4 py-3 font-medium flex justify-between items-center cursor-pointer
                       ${activeModuleId === module._id ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-800'}`}
                     onClick={() => setActiveModuleId(prev => prev === module._id ? '' : module._id)}
                   >
                     <span>{module.titulo}</span>
-                    <svg 
-                      className={`w-5 h-5 transition-transform ${activeModuleId === module._id ? 'transform rotate-180' : ''}`} 
-                      fill="none" 
-                      stroke="currentColor" 
+                    <svg
+                      className={`w-5 h-5 transition-transform ${activeModuleId === module._id ? 'transform rotate-180' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
-                  
+
                   {activeModuleId === module._id && (
                     <div className="bg-gray-50 py-1">
                       {module.lecciones?.map((lesson) => (
-                        <div 
+                        <div
                           key={lesson._id}
                           className={`px-4 py-2 flex items-center cursor-pointer 
                             ${activeLessonId === lesson._id ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
@@ -298,7 +481,7 @@ const StudentCourseView: React.FC = () => {
                             )}
                           </div>
                           <span className="text-sm truncate">{lesson.titulo}</span>
-                          
+
                           {/* Mostrar duración si está disponible */}
                           {lesson.duracionMinutos && (
                             <span className="ml-auto text-xs text-gray-500">
@@ -335,27 +518,29 @@ const StudentCourseView: React.FC = () => {
                   </span>
                 </div>
               </div>
-              
+
               {/* Contenido de la lección */}
               <div className="mb-8">
                 {currentLesson.tipo === 'video' && currentLesson.videoUrl && (
-                  <div className="aspect-w-16 aspect-h-9 mb-4">
-                    <iframe 
-                      src={typeof currentLesson.videoUrl === 'string' ? currentLesson.videoUrl : ''}
+                  <div className="mb-4" style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
+                    <iframe
+                      src={formatYoutubeUrl(currentLesson.videoUrl.toString())}
                       title={currentLesson.titulo}
                       allowFullScreen
-                      className="w-full h-full rounded-lg"
+                      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      frameBorder="0"
                     ></iframe>
                   </div>
                 )}
-                
+
                 {currentLesson.contenido && (
-                  <div 
-                    className="prose max-w-none" 
+                  <div
+                    className="prose max-w-none"
                     dangerouslySetInnerHTML={{ __html: currentLesson.contenido }}
                   />
                 )}
-                
+
                 {/* Recursos adicionales */}
                 {currentLesson.recursosAdicionales && currentLesson.recursosAdicionales.length > 0 && (
                   <div className="mt-8 border-t border-gray-200 pt-6">
@@ -363,9 +548,9 @@ const StudentCourseView: React.FC = () => {
                     <ul className="space-y-2">
                       {currentLesson.recursosAdicionales.map((recurso, index) => (
                         <li key={index}>
-                          <a 
-                            href={recurso.url} 
-                            target="_blank" 
+                          <a
+                            href={recurso.url}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center text-blue-600 hover:text-blue-800"
                           >
@@ -388,7 +573,272 @@ const StudentCourseView: React.FC = () => {
                   </div>
                 )}
               </div>
-              
+
+              {/* Sección de comentarios */}
+              <div className="mt-10 border-t border-gray-200 pt-8">
+                <h3 className="text-xl font-bold mb-6 flex items-center">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  Comentarios ({comments.length})
+                </h3>
+
+                {/* Formulario para añadir comentarios */}
+                <div ref={commentFormRef} className="mb-8">
+                  <form onSubmit={handleSubmitComment} className="bg-gray-50 rounded-lg p-4">
+                    <textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Escribe un comentario o pregunta sobre esta lección..."
+                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      rows={3}
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={!newComment.trim()}
+                        className={`px-4 py-2 rounded-md ${
+                          !newComment.trim() 
+                            ? 'bg-gray-300 cursor-not-allowed' 
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                      >
+                        Publicar comentario
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Lista de comentarios */}
+                {isLoadingComments ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                  </div>
+                ) : comments.length > 0 ? (
+                  <div className="space-y-6">
+                    {comments.map((comment) => (
+                      <div key={comment._id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                        {/* Cabecera del comentario */}
+                        <div className="flex items-start p-4 border-b border-gray-100">
+                          {/* Avatar */}
+                          <div className="flex-shrink-0 mr-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold">
+                              {comment.userId.nombre.charAt(0).toUpperCase()}
+                            </div>
+                          </div>
+                          
+                          {/* Contenido del comentario */}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="font-medium">{comment.userId.nombre}</div>
+                              <div className="text-xs text-gray-500">
+                                {new Date(comment.fecha).toLocaleDateString()}
+                              </div>
+                            </div>
+                            
+                            {editingComment === comment._id ? (
+                              <div className="mt-2">
+                                <textarea
+                                  value={editContent}
+                                  onChange={(e) => setEditContent(e.target.value)}
+                                  className="w-full p-2 border border-gray-300 rounded-md"
+                                  rows={2}
+                                />
+                                <div className="flex justify-end mt-2 space-x-2">
+                                  <button
+                                    onClick={() => {
+                                      setEditingComment(null);
+                                      setEditContent('');
+                                    }}
+                                    className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateComment(comment._id)}
+                                    className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                  >
+                                    Guardar
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-gray-800">{comment.contenido}</p>
+                            )}
+                          </div>
+                          
+                          {/* Acciones del comentario */}
+                          {!editingComment && (
+                            <div className="flex-shrink-0 ml-2">
+                              <div className="relative">
+                                <button
+                                  className="text-gray-500 hover:text-gray-700"
+                                  onClick={() => {
+                                    setEditingComment(comment._id);
+                                    setEditContent(comment.contenido);
+                                  }}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  className="text-gray-500 hover:text-red-600 ml-2"
+                                  onClick={() => handleDeleteComment(comment._id)}
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Respuestas */}
+                        <div className="bg-gray-50">
+                          {comment.respuestas && comment.respuestas.length > 0 && (
+                            <div className="p-4 pl-14 space-y-4 border-b border-gray-100">
+                              {comment.respuestas.map((reply) => (
+                                <div key={reply.id} className="flex items-start">
+                                  {/* Avatar de la respuesta */}
+                                  <div className="flex-shrink-0 mr-3">
+                                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-sm">
+                                      {reply.userId.nombre.charAt(0).toUpperCase()}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Contenido de la respuesta */}
+                                  <div className="flex-1">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <div className="font-medium text-sm">{reply.userId.nombre}</div>
+                                      <div className="text-xs text-gray-500">
+                                        {new Date(reply.fecha).toLocaleDateString()}
+                                      </div>
+                                    </div>
+                                    
+                                    {editingReply && editingReply.commentId === comment._id && editingReply.replyId === reply.id ? (
+                                      <div className="mt-1">
+                                        <textarea
+                                          value={editContent}
+                                          onChange={(e) => setEditContent(e.target.value)}
+                                          className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                          rows={2}
+                                        />
+                                        <div className="flex justify-end mt-2 space-x-2">
+                                          <button
+                                            onClick={() => {
+                                              setEditingReply(null);
+                                              setEditContent('');
+                                            }}
+                                            className="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+                                          >
+                                            Cancelar
+                                          </button>
+                                          <button
+                                            onClick={() => handleUpdateReply(comment._id, reply.id)}
+                                            className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                          >
+                                            Guardar
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <p className="text-gray-800 text-sm">{reply.contenido}</p>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Acciones de la respuesta */}
+                                  {!editingReply && (
+                                    <div className="flex-shrink-0 ml-2">
+                                      <button
+                                        className="text-gray-500 hover:text-gray-700"
+                                        onClick={() => {
+                                          setEditingReply({ commentId: comment._id, replyId: reply.id });
+                                          setEditContent(reply.contenido);
+                                        }}
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        className="text-gray-500 hover:text-red-600 ml-2"
+                                        onClick={() => handleDeleteReply(comment._id, reply.id)}
+                                      >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Formulario para responder */}
+                          {replyingTo === comment._id ? (
+                            <div className="px-4 py-3 pl-14">
+                              <textarea
+                                value={replyContent}
+                                onChange={(e) => setReplyContent(e.target.value)}
+                                placeholder="Escribe una respuesta..."
+                                className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                                rows={2}
+                              />
+                              <div className="mt-2 flex justify-end space-x-2">
+                                <button
+                                  onClick={() => {
+                                    setReplyingTo(null);
+                                    setReplyContent('');
+                                  }}
+                                  className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  onClick={() => handleSubmitReply(comment._id)}
+                                  disabled={!replyContent.trim()}
+                                  className={`px-3 py-1 text-sm rounded-md ${
+                                    !replyContent.trim() 
+                                      ? 'bg-gray-300 cursor-not-allowed' 
+                                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                                  }`}
+                                >
+                                  Responder
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setReplyingTo(comment._id)}
+                              className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
+                            >
+                              <span className="flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                </svg>
+                                Responder
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg">
+                    <svg className="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    <p className="mt-2 text-gray-600">
+                      No hay comentarios en esta lección. ¡Sé el primero en comentar!
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* Navegación y botón de completar */}
               <div className="border-t border-gray-200 pt-6 flex justify-between">
                 <button
@@ -398,18 +848,31 @@ const StudentCourseView: React.FC = () => {
                 >
                   Anterior
                 </button>
-                
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    completedLessons.includes(currentLesson._id)
+
+                <div className="flex items-center">
+                  <button
+                    onClick={scrollToComments}
+                    className="mr-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    <span className="flex items-center">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                      Comentarios
+                    </span>
+                  </button>
+                  
+                  <button
+                    className={`px-4 py-2 rounded-md ${completedLessons.includes(currentLesson._id)
                       ? 'bg-green-600 text-white hover:bg-green-700'
                       : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                  onClick={markLessonComplete}
-                >
-                  {completedLessons.includes(currentLesson._id) ? 'Completado' : 'Marcar como completado'}
-                </button>
-                
+                      }`}
+                    onClick={markLessonComplete}
+                  >
+                    {completedLessons.includes(currentLesson._id) ? 'Completado' : 'Marcar como completado'}
+                  </button>
+                </div>
+
                 <button
                   className={`px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 ${!nextLesson ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={navigateToNextLesson}

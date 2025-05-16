@@ -33,7 +33,18 @@ export interface AuthResponse {
     token: string;
     user: User;
 }
+/*
+export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+    const response = await apiClient.post('/auth/login', credentials);
 
+    // Guardar el token en localStorage
+    if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+
+    return response.data;
+};*/
 export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
     const response = await apiClient.post('/auth/login', credentials);
 
@@ -86,11 +97,26 @@ export const logout = () => {
 export const isAuthenticated = (): boolean => {
     return !!localStorage.getItem('token');
 };
-
+/*
 export const getCurrentUser = (): User | null => {
     const userJson = localStorage.getItem('user');
     return userJson ? JSON.parse(userJson) : null;
 };
+*/
+export const getCurrentUser = (): User | null => {
+    const userJson = localStorage.getItem('user');
+    if (!userJson) return null;
+    
+    const userData = JSON.parse(userJson);
+    
+    // Adaptar _id a id si es necesario
+    if (!userData.id && userData._id) {
+        userData.id = userData._id;
+    }
+    
+    return userData;
+};
+
 //** agregado */
 export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
     await apiClient.put('/auth/password', { currentPassword, newPassword });

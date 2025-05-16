@@ -36,6 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// ruta: src/models/Certificate.ts
 const mongoose_1 = __importStar(require("mongoose"));
 const crypto_1 = __importDefault(require("crypto"));
 const certificateSchema = new mongoose_1.Schema({

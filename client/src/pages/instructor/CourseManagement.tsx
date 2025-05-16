@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getCourseById, updateCourse, deleteCourse, toggleCoursePublishStatus, type Course } from '../../api/courses';
+import { getCourseById, deleteCourse, toggleCoursePublishStatus, type Course } from '../../api/courses';
 import { getModulesByCourse,type Module, createModule, updateModule, deleteModule } from '../../api/modules';
 import { getLessonsByModule, type Lesson, createLesson, updateLesson, deleteLesson } from '../../api/lessons';
 import ModuleForm from '../../components/instructor/ModuleForm';
@@ -259,7 +259,7 @@ const CourseManagement: React.FC = () => {
         try {
             if (type === 'course' && courseId) {
                 await deleteCourse(courseId);
-                navigate('/instructor/dashboard');
+                navigate('/admin/dashboard');
                 return;
             }
 
@@ -318,7 +318,7 @@ const CourseManagement: React.FC = () => {
                 </div>
                 <div className="mt-4">
                     <Link
-                        to="/instructor/dashboard"
+                        to="/admin/dashboard"
                         className="text-blue-600 hover:text-blue-800"
                     >
                         ← Volver al dashboard
@@ -332,7 +332,7 @@ const CourseManagement: React.FC = () => {
         <div className="container mx-auto px-4 py-8">
             <div className="mb-6">
                 <Link
-                    to="/instructor/dashboard"
+                    to="/admin/dashboard"
                     className="text-blue-600 hover:text-blue-800 inline-flex items-center"
                 >
                     <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -389,7 +389,7 @@ const CourseManagement: React.FC = () => {
 
                     <div className="flex flex-col md:flex-row gap-2">
                         <Link
-                            to={`/instructor/courses/${course._id}/edit`}
+                            to={`/admin/courses/${course._id}/edit`}
                             className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-md text-sm font-medium"
                         >
                             Editar información

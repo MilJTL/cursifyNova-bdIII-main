@@ -71,7 +71,7 @@ const InstructorDashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <h1 className="text-2xl font-bold mb-4 md:mb-0">Dashboard del Instructor</h1>
         <Link 
-          to="/instructor/courses/new" 
+          to="/admin/courses/new" 
           className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md flex items-center"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +141,7 @@ const InstructorDashboard: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">No tienes cursos creados aún</h3>
           <p className="text-gray-500 mb-6">Empieza a crear contenido educativo para compartir tu conocimiento con estudiantes de todo el mundo.</p>
           <Link 
-            to="/instructor/courses/new" 
+            to="/admin/courses/new" 
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
           >
             Crear mi primer curso
@@ -218,14 +218,14 @@ const InstructorDashboard: React.FC = () => {
               <div className="px-4 py-3 bg-gray-50 border-t border-gray-200">
                 <div className="flex justify-between">
                   <Link
-                    to={`/instructor/courses/${course._id}`}
+                    to={`/admin/courses/${course._id}`}
                     className="text-blue-600 hover:text-blue-800 font-medium text-sm"
                   >
                     Gestionar curso
                   </Link>
                   
                   <Link
-                    to={`/instructor/courses/${course._id}/analytics`}
+                    to={`/admin/courses/${course._id}/analytics`}
                     className="text-gray-600 hover:text-gray-800 text-sm"
                   >
                     Ver estadísticas

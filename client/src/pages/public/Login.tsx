@@ -18,7 +18,7 @@ const Login: React.FC = () => {
 
     // Si ya está autenticado, redirigir al dashboard
     if (isAuthenticated) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/" replace />; // /
     }
 
     return (

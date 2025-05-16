@@ -1,5 +1,5 @@
-// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Añadir esta importación
 import type { User, RegisterData } from '../api/auth';
 import { login as apiLogin, register as apiRegister, logout as apiLogout, getCurrentUser, getProfile } from '../api/auth';
 
@@ -8,9 +8,10 @@ interface AuthContextType {
     isLoading: boolean;
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<void>;
-    register: (userData: RegisterData) => Promise<void>; // Reemplaza 'any' con 'RegisterData'
+    register: (userData: RegisterData) => Promise<void>;
     logout: () => void;
     updateUser: (userData: Partial<User>) => void;
+    redirectAfterAuth: () => void; // Nueva función para redireccionar
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,11 +27,12 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(getCurrentUser());
     const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate(); // Hook para navegación
     
     const isAuthenticated = user !== null;
 
     useEffect(() => {
-        // Verificar la autenticación al cargar la aplicación
+        // Verificar autenticación al cargar la aplicación
         const verifyAuth = async () => {
             try {
                 if (localStorage.getItem('token')) {
@@ -39,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             } catch (error) {
                 console.error('Error al verificar autenticación:', error);
-                // Si hay error, limpiar la sesión
+                // Limpiar la sesión si hay error
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 setUser(null);
@@ -51,11 +53,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyAuth();
     }, []);
 
+    // Función para redirigir según el rol del usuario
+    const redirectAfterAuth = () => {
+        if (!user) return;
+        
+        switch (user.rol) {
+            case 'instructor':
+                navigate('/instructor/dashboard');
+                break;
+            case 'admin':
+                navigate('/admin/dashboard');
+                break;
+            default:
+                navigate('/student/dashboard');
+                break;
+        }
+    };
+/*
     const login = async (email: string, password: string) => {
         setIsLoading(true);
         try {
             const response = await apiLogin({ email, password });
             setUser(response.user);
+            
+            // Redirigir automáticamente después del login exitoso
+            if (response.user) {
+                switch (response.user.rol) {
+                    case 'instructor':
+                        navigate('/instructor/dashboard');
+                        break;
+                    case 'admin':
+                        navigate('/admin/dashboard');
+                        break;
+                    default:
+                        navigate('/student/dashboard');
+                        break;
+                }
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };*/
+        const login = async (email: string, password: string): Promise<void> => {
+        setIsLoading(true);
+        try {
+            const response = await apiLogin({ email, password });
+            setUser(response.user);
+            
+            // Redirigir basado en rol
+            if (response.user) {
+                switch (response.user.rol) {
+                    case 'instructor':
+                        navigate('/instructor/dashboard');
+                        break;
+                    case 'admin':
+                        navigate('/admin/dashboard');
+                        break;
+                    default:
+                        navigate('/student/dashboard');
+                        break;
+                }
+            }
+        } catch (error) {
+            console.error('Error de login:', error);
+            throw error;
         } finally {
             setIsLoading(false);
         }
@@ -66,6 +127,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             const response = await apiRegister(userData);
             setUser(response.user);
+            
+            // Redirección después de registro exitoso
+            if (response.user) {
+                navigate('/student/dashboard'); // Los nuevos registros generalmente son estudiantes
+            }
         } finally {
             setIsLoading(false);
         }
@@ -74,10 +140,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logout = () => {
         apiLogout();
         setUser(null);
+        // Redirigir al home después de cerrar sesión
+        navigate('/');
     };
 
     const updateUser = (userData: Partial<User>) => {
-    setUser(prev => prev ? { ...prev, ...userData } : null);
+        setUser(prev => prev ? { ...prev, ...userData } : null);
     };
 
     const value = {
@@ -87,7 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         logout,
-        updateUser
+        updateUser,
+        redirectAfterAuth // Exponer la nueva función
     };
 
     return (

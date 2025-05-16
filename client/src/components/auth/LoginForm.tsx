@@ -31,6 +31,7 @@ const LoginForm: React.FC = () => {
             const response = await login(formData);
 
             updateUser(response.user);
+
             navigate('/'); // Redirigir al dashboard
 
         } catch (err: unknown) {

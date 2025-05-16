@@ -1,15 +1,14 @@
-// components/layout/PrivateRoute.tsx
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-
 
 interface PrivateRouteProps {
     redirectPath?: string;
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ redirectPath = '/login' }) => {
-    const { isAuthenticated, isLoading } = useAuth();
+    const { user, isAuthenticated, isLoading } = useAuth();
+    const location = useLocation();
 
     // Si está cargando, mostrar spinner o mensaje
     if (isLoading) {
@@ -20,12 +19,25 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ redirectPath = '/login' }) 
         );
     }
 
-    // Si no está autenticado, redirigir a login
+    // Si no está autenticado, redirigir a login guardando la ruta actual
     if (!isAuthenticated) {
-        return <Navigate to={redirectPath} replace />;
+        return <Navigate to={redirectPath} state={{ from: location }} replace />;
     }
 
-    // Si está autenticado, mostrar el componente hijo
+    // Verificación de permisos por ruta para mayor seguridad
+    const path = location.pathname;
+  
+    // Verificar acceso a rutas de instructor
+    if (path.startsWith('/instructor') && user?.rol !== 'instructor' && user?.rol !== 'admin') {
+        return <Navigate to="/dashboard" replace />;
+    }
+  
+    // Verificar acceso a rutas de administrador
+    if (path.startsWith('/admin') && user?.rol !== 'admin') {
+        return <Navigate to="/dashboard" replace />;
+    }
+
+    // Si está autenticado y tiene permisos, mostrar el componente hijo
     return <Outlet />;
 };
 

@@ -222,7 +222,7 @@ const CourseAnalytics: React.FC = () => {
                 </div>
                 <div className="mt-4">
                     <Link
-                        to="/instructor/dashboard"
+                        to="/admin/dashboard"
                         className="text-blue-600 hover:text-blue-800"
                     >
                         ← Volver al dashboard
@@ -236,7 +236,7 @@ const CourseAnalytics: React.FC = () => {
         <div className="container mx-auto px-4 py-8">
             <div className="mb-6">
                 <Link
-                    to={`/instructor/courses/${courseId}`}
+                    to={`/admin/courses/${courseId}`}
                     className="text-blue-600 hover:text-blue-800 inline-flex items-center"
                 >
                     <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -190,22 +190,39 @@ const LessonForm: React.FC<LessonFormProps> = ({ lesson, onSubmit, onCancel }) =
                             </div>
 
                             <div className="mb-4">
-                                <label htmlFor="contenido" className="block text-sm font-medium text-gray-700 mb-1">
-                                    Contenido <span className="text-red-600">*</span>
-                                </label>
-                                <textarea
-                                    id="contenido"
-                                    name="contenido"
-                                    rows={6}
-                                    value={formData.contenido}
-                                    onChange={handleChange}
-                                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border border-gray-300 rounded-md"
-                                    required
-                                ></textarea>
-                                <p className="mt-1 text-xs text-gray-500">
-                                    {formData.tipo === 'video' ? 'Ingresa la URL de YouTube o Vimeo' : 'Soporta formato Markdown para texto enriquecido'}
-                                </p>
-                            </div>
+    <label htmlFor="contenido" className="block text-sm font-medium text-gray-700 mb-1">
+        {formData.tipo === 'video' ? 'URL del video' : 'Contenido'} <span className="text-red-600">*</span>
+    </label>
+    
+    {formData.tipo === 'video' ? (
+        <input
+            type="url"
+            id="contenido"
+            name="contenido"
+            value={formData.contenido}
+            onChange={handleChange}
+            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+            placeholder="https://www.youtube.com/watch?v=..."
+            required
+        />
+    ) : (
+        <textarea
+            id="contenido"
+            name="contenido"
+            rows={6}
+            value={formData.contenido}
+            onChange={handleChange}
+            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border border-gray-300 rounded-md"
+            required
+        ></textarea>
+    )}
+    
+    <p className="mt-1 text-xs text-gray-500">
+        {formData.tipo === 'video' 
+            ? 'Ingresa la URL completa del video de YouTube o Vimeo' 
+            : 'Soporta formato Markdown para texto enriquecido'}
+    </p>
+</div>
 
                             <div className="mb-4">
                                 <h4 className="text-sm font-medium text-gray-700 mb-2">Recursos adicionales</h4>

@@ -1,9 +1,10 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import PublicLayout from './components/layout/PublicLayout';
 import PrivateRoute from './router/PrivateRoute';
+import { useAuth } from './contexts/AuthContext';
 
-
+// Páginas de estudiante
 import StudentDashboard from './pages/student/StudentDashboard';
 import StudentCourseView from './pages/student/StudentCourseView';
 import StudentProgress from './pages/student/StudentProgress';
@@ -24,12 +25,31 @@ import Courses from './pages/public/Courses';
 import CourseDetail from './pages/public/CourseDetail';
 import NotFound from './pages/public/NotFound';
 
+// Componente para redireccionar según el rol
+const RoleBasedRedirect = () => {
+  const { user } = useAuth();
+  
+  if (!user) return <Navigate to="/login" />;
+  
+  switch (user.rol) {
+    case 'instructor':
+      return <Navigate to="/instructor/dashboard" />;
+    case 'admin':
+      return <Navigate to="/admin/dashboard" />;
+    default:
+      return <Navigate to="/student/dashboard" />;
+  }
+};
+
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <div className="min-h-screen flex flex-col bg-gray-50">
           <Routes>
+            {/* Ruta base para redirigir según el rol */}
+            <Route path="/dashboard" element={<RoleBasedRedirect />} />
+            
             {/* Rutas públicas con PublicLayout */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Home />} />
@@ -39,29 +59,35 @@ function App() {
               <Route path="/courses/:id" element={<CourseDetail />} />
             </Route>
 
-            {/* Rutas de estudiante (requieren autenticación) */}
+            {/* Rutas protegidas (requieren autenticación) */}
             <Route element={<PrivateRoute />}>
-              <Route path="/student/dashboard" element={<StudentDashboard />} />
-              <Route path="/student/courses/:courseId" element={<StudentCourseView />} />
-              <Route path="/student/progress/:courseId" element={<StudentProgress />} />
-              {/* Ruta de perfil (accesible para todos los usuarios autenticados) */}
+              {/* Perfil de usuario (accesible para todos los usuarios) */}
               <Route path="/profile" element={<UserProfile />} />
-              {/* Rutas de instructor */}
-              <Route path="/instructor/dashboard" element={<InstructorDashboard />} />
-              <Route path="/instructor/courses/new" element={<CourseEditor />} />
-              <Route path="/instructor/courses/:courseId/edit" element={<CourseEditor />} />
-              <Route path="/instructor/courses/:courseId" element={<CourseManagement />} />
-              <Route path="/instructor/courses/:courseId/analytics" element={<CourseAnalytics />} />
-              <Route path="/instructor/courses/:courseId/students" element={<StudentManagement />} />
               
+              {/* Rutas de estudiante */}
+              <Route path="/student">
+                <Route path="dashboard" element={<StudentDashboard />} />
+                <Route path="courses/:courseId" element={<StudentCourseView />} />
+                <Route path="progress/:courseId" element={<StudentProgress />} />
+              </Route>
+              
+              {/* Rutas de instructor */}
+              <Route path="/admin"> 
+                <Route path="dashboard" element={<InstructorDashboard />} />
+                <Route path="courses/new" element={<CourseEditor />} />
+                <Route path="courses/:courseId/edit" element={<CourseEditor />} />
+                <Route path="courses/:courseId" element={<CourseManagement />} />
+                <Route path="courses/:courseId/analytics" element={<CourseAnalytics />} />
+                <Route path="courses/:courseId/students" element={<StudentManagement />} />
+              </Route>
             </Route>
 
             {/* Página 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
-      </Router>
-    </AuthProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 

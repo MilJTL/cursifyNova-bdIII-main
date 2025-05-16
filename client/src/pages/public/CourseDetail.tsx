@@ -209,7 +209,7 @@ const CourseDetail: React.FC = () => {
                                         <div>
                                             <button
                                                 className="w-full bg-blue-600 text-white py-3 rounded-md font-medium mb-3"
-                                                onClick={() => navigate(`/instructor/courses/${course._id}/edit`)}
+                                                onClick={() => navigate(`/admin/courses/${course._id}/edit`)}
                                             >
                                                 Editar curso
                                             </button>

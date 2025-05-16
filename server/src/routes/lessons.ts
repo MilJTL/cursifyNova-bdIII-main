@@ -7,18 +7,19 @@ import {
     deleteLesson,
     reorderLessons
 } from '../controllers/lessonController';
-import { authenticate} from '../middlewares/auth';
+import { authenticate } from '../middlewares/auth';
+import { asyncHandler } from '../utils/controllerHandler';
 
 const router = Router();
 
 // Rutas públicas o con autenticación básica
-router.get('/module/:moduloId', getLessonsByModule);
-router.get('/:id', getLessonById);
+router.get('/module/:moduloId', asyncHandler(getLessonsByModule));
+router.get('/:id', asyncHandler(getLessonById));
 
 // Rutas que requieren autenticación y roles específicos
-router.post('/', authenticate, createLesson);
-router.put('/:id', authenticate,  updateLesson);
-router.delete('/:id', authenticate,  deleteLesson);
-router.post('/reorder', authenticate,  reorderLessons);
+router.post('/', authenticate, asyncHandler(createLesson));
+router.put('/:id', authenticate, asyncHandler(updateLesson));
+router.delete('/:id', authenticate, asyncHandler(deleteLesson));
+router.post('/reorder', authenticate, asyncHandler(reorderLessons));
 
 export default router;

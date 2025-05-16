@@ -3,16 +3,17 @@
 import { Router } from 'express';
 import { register, login, getProfile, updateProfile, changePassword } from '../controllers/authController';
 import { authenticate } from '../middlewares/auth';
+import { asyncHandler } from '../utils/controllerHandler';
 
 const router = Router();
 
 // Rutas públicas
-router.post('/register', register);
-router.post('/login', login);
+router.post('/register', asyncHandler(register));
+router.post('/login', asyncHandler(login));
 
 // Rutas protegidas (requieren autenticación)
-router.get('/me', authenticate, getProfile);
-router.put('/profile', authenticate, updateProfile);
-router.put('/change-password', authenticate, changePassword);
+router.get('/me', authenticate, asyncHandler(getProfile));
+router.put('/profile', authenticate, asyncHandler(updateProfile));
+router.put('/change-password', authenticate, asyncHandler(changePassword));
 
 export default router;

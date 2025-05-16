@@ -7,18 +7,19 @@ import {
     deleteModule,
     reorderModules
 } from '../controllers/moduleController';
-import { authenticate} from '../middlewares/auth';
+import { authenticate } from '../middlewares/auth';
+import { asyncHandler } from '../utils/controllerHandler';
 
 const router = Router();
 
 // Rutas públicas o con autenticación básica
-router.get('/', getModulesByCourse);
-router.get('/:id', getModuleById);
+router.get('/', asyncHandler(getModulesByCourse));
+router.get('/:id', asyncHandler(getModuleById));
 
 // Rutas que requieren autenticación y roles específicos
-router.post('/', authenticate, createModule);
-router.put('/:id', authenticate, updateModule);
-router.delete('/:id', authenticate,deleteModule);
-router.post('/reorder', authenticate,  reorderModules);
+router.post('/', authenticate, asyncHandler(createModule));
+router.put('/:id', authenticate, asyncHandler(updateModule));
+router.delete('/:id', authenticate, asyncHandler(deleteModule));
+router.post('/reorder', authenticate, asyncHandler(reorderModules));
 
 export default router;

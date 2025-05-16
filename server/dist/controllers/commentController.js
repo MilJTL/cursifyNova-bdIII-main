@@ -1,31 +1,30 @@
 "use strict";
+// server/src/controllers/commentController.ts
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteReply = exports.deleteComment = exports.addReply = exports.createComment = exports.getCommentsByLesson = void 0;
+exports.deleteReply = exports.updateReply = exports.addReply = exports.deleteComment = exports.updateComment = exports.createComment = exports.getCommentsByLesson = void 0;
 const Comment_1 = __importDefault(require("../models/Comment"));
-const Lesson_1 = __importDefault(require("../models/Lesson"));
 const mongoose_1 = __importDefault(require("mongoose"));
-// Obtener todos los comentarios de una lección
+// Obtener comentarios de una lección
 const getCommentsByLesson = async (req, res) => {
     try {
-        const leccionId = req.params.leccionId;
-        const comments = await Comment_1.default.find({ leccionId })
-            .sort({ fecha: -1 })
-            .populate('userId', 'nombre username avatarUrl')
-            .populate('respuestas.userId', 'nombre username avatarUrl');
-        res.status(200).json({
-            success: true,
-            count: comments.length,
-            data: comments
-        });
+        const { lessonId } = req.params;
+        // Validar que el ID sea válido
+        if (!mongoose_1.default.Types.ObjectId.isValid(lessonId)) {
+            return res.status(400).json({ message: 'ID de lección inválido' });
+        }
+        // Buscar comentarios y poblar datos de usuario
+        const comments = await Comment_1.default.find({ leccionId: lessonId })
+            .populate('userId', 'nombre avatarUrl')
+            .populate('respuestas.userId', 'nombre avatarUrl')
+            .sort({ fecha: -1 }); // Más recientes primero
+        return res.status(200).json(comments);
     }
     catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Error al obtener los comentarios'
-        });
+        console.error('Error al obtener comentarios:', error);
+        return res.status(500).json({ message: 'Error al obtener comentarios' });
     }
 };
 exports.getCommentsByLesson = getCommentsByLesson;
@@ -33,170 +32,176 @@ exports.getCommentsByLesson = getCommentsByLesson;
 const createComment = async (req, res) => {
     var _a;
     try {
-        const { leccionId, contenido } = req.body;
+        const { lessonId } = req.params;
+        const { contenido } = req.body;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: 'No autorizado'
-            });
+        if (!(contenido === null || contenido === void 0 ? void 0 : contenido.trim())) {
+            return res.status(400).json({ message: 'El contenido es obligatorio' });
         }
-        // Verificar si la lección existe
-        const lessonExists = await Lesson_1.default.exists({ _id: leccionId });
-        if (!lessonExists) {
-            return res.status(404).json({
-                success: false,
-                message: 'Lección no encontrada'
-            });
-        }
-        const comment = await Comment_1.default.create({
+        const newComment = new Comment_1.default({
             userId,
-            leccionId,
+            leccionId: lessonId,
             contenido,
             fecha: new Date(),
             respuestas: []
         });
-        // Popularly user data for the response
-        const populatedComment = await Comment_1.default.findById(comment._id)
-            .populate('userId', 'nombre username avatarUrl');
-        res.status(201).json({
-            success: true,
-            data: populatedComment
-        });
+        await newComment.save();
+        // Obtener el comentario con datos de usuario
+        const savedComment = await Comment_1.default.findById(newComment._id)
+            .populate('userId', 'nombre avatarUrl');
+        return res.status(201).json(savedComment);
     }
     catch (error) {
-        res.status(400).json({
-            success: false,
-            message: error.message || 'Error al crear el comentario'
-        });
+        console.error('Error al crear comentario:', error);
+        return res.status(500).json({ message: 'Error al crear comentario' });
     }
 };
 exports.createComment = createComment;
-// Añadir una respuesta a un comentario
-const addReply = async (req, res) => {
+// Actualizar un comentario
+const updateComment = async (req, res) => {
     var _a;
     try {
-        const { comentarioId, contenido } = req.body;
+        const { commentId } = req.params;
+        const { contenido } = req.body;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: 'No autorizado'
-            });
+        if (!(contenido === null || contenido === void 0 ? void 0 : contenido.trim())) {
+            return res.status(400).json({ message: 'El contenido es obligatorio' });
         }
-        // Verificar si el comentario existe
-        const comment = await Comment_1.default.findById(comentarioId);
+        // Buscar y verificar propiedad
+        const comment = await Comment_1.default.findById(commentId);
         if (!comment) {
-            return res.status(404).json({
-                success: false,
-                message: 'Comentario no encontrado'
-            });
+            return res.status(404).json({ message: 'Comentario no encontrado' });
         }
-        // Crear la respuesta
-        const replyId = new mongoose_1.default.Types.ObjectId().toString();
-        const reply = {
-            id: replyId,
-            userId: new mongoose_1.default.Types.ObjectId(userId),
-            contenido,
-            fecha: new Date()
-        };
-        // Añadir la respuesta al comentario
-        comment.respuestas.push(reply);
+        if (comment.userId.toString() !== userId) {
+            return res.status(403).json({ message: 'No tienes permiso para editar este comentario' });
+        }
+        // Actualizar
+        comment.contenido = contenido;
         await comment.save();
-        // Obtener el comentario actualizado con los datos de usuario populados
-        const updatedComment = await Comment_1.default.findById(comentarioId)
-            .populate('userId', 'nombre username avatarUrl')
-            .populate('respuestas.userId', 'nombre username avatarUrl');
-        res.status(200).json({
-            success: true,
-            data: updatedComment
-        });
+        return res.status(200).json(comment);
     }
     catch (error) {
-        res.status(400).json({
-            success: false,
-            message: error.message || 'Error al añadir la respuesta'
-        });
+        console.error('Error al actualizar comentario:', error);
+        return res.status(500).json({ message: 'Error al actualizar comentario' });
     }
 };
-exports.addReply = addReply;
+exports.updateComment = updateComment;
 // Eliminar un comentario
 const deleteComment = async (req, res) => {
     var _a;
     try {
-        const commentId = req.params.id;
+        const { commentId } = req.params;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
-        // Verificar si el comentario existe
+        // Buscar y verificar propiedad
         const comment = await Comment_1.default.findById(commentId);
         if (!comment) {
-            return res.status(404).json({
-                success: false,
-                message: 'Comentario no encontrado'
-            });
+            return res.status(404).json({ message: 'Comentario no encontrado' });
         }
-        // Verificar si el usuario es el autor del comentario
         if (comment.userId.toString() !== userId) {
-            return res.status(403).json({
-                success: false,
-                message: 'No tienes permiso para eliminar este comentario'
-            });
+            return res.status(403).json({ message: 'No tienes permiso para eliminar este comentario' });
         }
         await Comment_1.default.findByIdAndDelete(commentId);
-        res.status(200).json({
-            success: true,
-            message: 'Comentario eliminado correctamente'
-        });
+        return res.status(200).json({ message: 'Comentario eliminado correctamente' });
     }
     catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Error al eliminar el comentario'
-        });
+        console.error('Error al eliminar comentario:', error);
+        return res.status(500).json({ message: 'Error al eliminar comentario' });
     }
 };
 exports.deleteComment = deleteComment;
+// Añadir respuesta a un comentario
+const addReply = async (req, res) => {
+    var _a;
+    try {
+        const { commentId } = req.params;
+        const { contenido } = req.body;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+        if (!(contenido === null || contenido === void 0 ? void 0 : contenido.trim())) {
+            return res.status(400).json({ message: 'El contenido es obligatorio' });
+        }
+        const comment = await Comment_1.default.findById(commentId);
+        if (!comment) {
+            return res.status(404).json({ message: 'Comentario no encontrado' });
+        }
+        const replyId = new mongoose_1.default.Types.ObjectId().toString();
+        comment.respuestas.push({
+            id: replyId,
+            userId: new mongoose_1.default.Types.ObjectId(userId),
+            contenido,
+            fecha: new Date()
+        });
+        await comment.save();
+        // Obtener el comentario actualizado con datos de usuarios
+        const updatedComment = await Comment_1.default.findById(commentId)
+            .populate('userId', 'nombre avatarUrl')
+            .populate('respuestas.userId', 'nombre avatarUrl');
+        return res.status(201).json(updatedComment);
+    }
+    catch (error) {
+        console.error('Error al añadir respuesta:', error);
+        return res.status(500).json({ message: 'Error al añadir respuesta' });
+    }
+};
+exports.addReply = addReply;
+// Actualizar una respuesta
+const updateReply = async (req, res) => {
+    var _a;
+    try {
+        const { commentId, replyId } = req.params;
+        const { contenido } = req.body;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+        if (!(contenido === null || contenido === void 0 ? void 0 : contenido.trim())) {
+            return res.status(400).json({ message: 'El contenido es obligatorio' });
+        }
+        const comment = await Comment_1.default.findById(commentId);
+        if (!comment) {
+            return res.status(404).json({ message: 'Comentario no encontrado' });
+        }
+        const replyIndex = comment.respuestas.findIndex(r => r.id === replyId);
+        if (replyIndex === -1) {
+            return res.status(404).json({ message: 'Respuesta no encontrada' });
+        }
+        if (comment.respuestas[replyIndex].userId.toString() !== userId) {
+            return res.status(403).json({ message: 'No tienes permiso para editar esta respuesta' });
+        }
+        comment.respuestas[replyIndex].contenido = contenido;
+        await comment.save();
+        // Obtener el comentario actualizado con datos de usuarios
+        const updatedComment = await Comment_1.default.findById(commentId)
+            .populate('userId', 'nombre avatarUrl')
+            .populate('respuestas.userId', 'nombre avatarUrl');
+        return res.status(200).json(updatedComment);
+    }
+    catch (error) {
+        console.error('Error al actualizar respuesta:', error);
+        return res.status(500).json({ message: 'Error al actualizar respuesta' });
+    }
+};
+exports.updateReply = updateReply;
 // Eliminar una respuesta
 const deleteReply = async (req, res) => {
     var _a;
     try {
         const { commentId, replyId } = req.params;
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
-        // Verificar si el comentario existe
         const comment = await Comment_1.default.findById(commentId);
         if (!comment) {
-            return res.status(404).json({
-                success: false,
-                message: 'Comentario no encontrado'
-            });
+            return res.status(404).json({ message: 'Comentario no encontrado' });
         }
-        // Encontrar la respuesta
-        const replyIndex = comment.respuestas.findIndex(reply => reply.id === replyId);
+        const replyIndex = comment.respuestas.findIndex(r => r.id === replyId);
         if (replyIndex === -1) {
-            return res.status(404).json({
-                success: false,
-                message: 'Respuesta no encontrada'
-            });
+            return res.status(404).json({ message: 'Respuesta no encontrada' });
         }
-        // Verificar si el usuario es el autor de la respuesta
         if (comment.respuestas[replyIndex].userId.toString() !== userId) {
-            return res.status(403).json({
-                success: false,
-                message: 'No tienes permiso para eliminar esta respuesta'
-            });
+            return res.status(403).json({ message: 'No tienes permiso para eliminar esta respuesta' });
         }
-        // Eliminar la respuesta
         comment.respuestas.splice(replyIndex, 1);
         await comment.save();
-        res.status(200).json({
-            success: true,
-            message: 'Respuesta eliminada correctamente'
-        });
+        return res.status(200).json({ message: 'Respuesta eliminada correctamente' });
     }
     catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Error al eliminar la respuesta'
-        });
+        console.error('Error al eliminar respuesta:', error);
+        return res.status(500).json({ message: 'Error al eliminar respuesta' });
     }
 };
 exports.deleteReply = deleteReply;

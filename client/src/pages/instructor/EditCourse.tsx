@@ -179,7 +179,7 @@ const CourseEditor: React.FC = () => {
 
             // Redireccionar después de crear/actualizar
             setTimeout(() => {
-                navigate(`/instructor/courses/${result._id}`);
+                navigate(`/admin/courses/${result._id}`);
             }, 1500);
 
         } catch (err) {
@@ -202,7 +202,7 @@ const CourseEditor: React.FC = () => {
         <div className="container mx-auto px-4 py-8">
             <div className="mb-6">
                 <Link
-                    to="/instructor/dashboard"
+                    to="/admin/dashboard"
                     className="text-blue-600 hover:text-blue-800 inline-flex items-center"
                 >
                     <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -469,7 +469,7 @@ const CourseEditor: React.FC = () => {
 
                     <div className="flex justify-end">
                         <Link
-                            to="/instructor/dashboard"
+                            to="/admin/dashboard"
                             className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mr-2"
                         >
                             Cancelar
