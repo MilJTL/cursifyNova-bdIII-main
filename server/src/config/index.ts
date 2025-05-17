@@ -13,7 +13,7 @@ export const config = {
     jwtSecret: process.env.JWT_SECRET || '42311c774f94c15033365c8c2ffa772162f7528d994cf448c4f7d0c0d610e577',
     jwtExpire: process.env.JWT_EXPIRE || '30d',
     
-    // Base de datos - MODIFICAR ESTA LÍNEA
+    // Base de datos - MongoDB
     mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/CursosNova',
     
     // Redis (para caché)

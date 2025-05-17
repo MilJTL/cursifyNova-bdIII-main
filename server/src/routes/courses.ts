@@ -7,28 +7,29 @@ import {
     updateCourse, 
     deleteCourse,
     enrollCourse,
-    //addModuleToCourse,
     getInstructorCourses,
     getFullCourse
 } from '../controllers/courseController';
-import { authenticate } from '../middlewares/auth'; // Eliminado "authorize" ya que no existe
+import { authenticate } from '../middlewares/auth';
 import { asyncHandler } from '../utils/controllerHandler';
+import { cacheResponse, clearCache } from '../middlewares/cacheMiddleware';
 
 const router = Router();
 
-// Rutas públicas
-router.get('/', asyncHandler(getCourses));
+// Rutas públicas con caché
+router.get('/', cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
 
 // Rutas protegidas - Específicas primero
-router.get('/instructor', authenticate, asyncHandler(getInstructorCourses));  // Esta debe ir ANTES de /:id
-router.get('/:id/full', authenticate, asyncHandler(getFullCourse));
-router.post('/', authenticate, asyncHandler(createCourse));
-router.post('/:id/enroll', authenticate, asyncHandler(enrollCourse));
-//router.post('/:id/modules', authenticate, authorize(['instructor', 'admin']), asyncHandler(addModuleToCourse));
-router.put('/:id', authenticate, asyncHandler(updateCourse));
-router.delete('/:id', authenticate, asyncHandler(deleteCourse));
+router.get('/instructor', authenticate, cacheResponse(120), asyncHandler(getInstructorCourses)); // Caché por 2 minutos
+router.get('/:id/full', authenticate, cacheResponse(300), asyncHandler(getFullCourse)); // Caché por 5 minutos
+
+// Rutas que modifican datos - limpian caché relacionada con cursos
+router.post('/', authenticate, clearCache('api:/api/courses*'), asyncHandler(createCourse));
+router.post('/:id/enroll', authenticate, clearCache(`api:/api/courses*`), asyncHandler(enrollCourse));
+router.put('/:id', authenticate, clearCache(`api:/api/courses*`), asyncHandler(updateCourse));
+router.delete('/:id', authenticate, clearCache(`api:/api/courses*`), asyncHandler(deleteCourse));
 
 // Ruta dinámica con parámetro - SIEMPRE debe ir AL FINAL
-router.get('/:id', asyncHandler(getCourseById));  // Mueve esta al final
+router.get('/:id', cacheResponse(600), asyncHandler(getCourseById)); // Caché por 10 minutos
 
 export default router;

@@ -2,12 +2,17 @@
 import app from './app';
 import connectDB from './config/db';
 import { config } from './config';
+import { connectRedis } from './config/db_redis'; 
 
 // Inicializar la conexión a la base de datos
 const startServer = async () => {
     try {
         // Conectar a MongoDB
         await connectDB();
+        
+        // Conectar a Redis
+        await connectRedis();
+        console.log('Conexión a Redis establecida correctamente');
         
         // Iniciar el servidor
         const server = app.listen(config.port, () => {
@@ -16,6 +21,7 @@ const startServer = async () => {
             ║ Servidor CursifyNova ejecutándose             ║
             ║ Puerto: ${config.port.toString().padEnd(37, ' ')}║
             ║ Entorno: ${config.nodeEnv.padEnd(35, ' ')}║
+            ║ Redis: Conectado                              ║
             ╚═══════════════════════════════════════════════╝
             `);
         });
