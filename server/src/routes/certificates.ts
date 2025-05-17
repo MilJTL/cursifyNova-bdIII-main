@@ -8,10 +8,12 @@ import { asyncHandler } from '../utils/controllerHandler';
 const router = express.Router();
 
 // Verificar si el usuario puede recibir certificado
-router.get('/courses/:courseId/eligibility', authenticate, asyncHandler(certificateController.checkEligibility));
-
+//router.get('/courses/:courseId/eligibility', authenticate, asyncHandler(certificateController.checkEligibility));
+router.get('/eligibility/:courseId', authenticate, asyncHandler(certificateController.checkEligibility) );
 // Generar certificado
-router.post('/courses/:courseId/generate', authenticate, asyncHandler(certificateController.generateCertificate));
+router.post('/generate/:courseId', authenticate,asyncHandler(certificateController.generateCertificate));
+
+//router.post('/courses/:courseId/generate', authenticate, asyncHandler(certificateController.generateCertificate));
 
 // Descargar certificado
 router.get('/:certificateId/download', authenticate, asyncHandler(certificateController.downloadCertificate));

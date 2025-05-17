@@ -2,6 +2,105 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
 import { generateToken } from '../utils/jwt';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+
+
+// Configuración de multer para almacenar avatares
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../public/uploads/avatars');
+    
+    // Crear el directorio si no existe
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Generar nombre único para el archivo
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+    const ext = path.extname(file.originalname);
+    cb(null, `avatar-${uniqueSuffix}${ext}`);
+  }
+});
+
+// Filtro para permitir solo imágenes
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedTypes = /jpeg|jpg|png|gif|webp/;
+  const mimetype = allowedTypes.test(file.mimetype);
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  }
+  
+  cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, gif, webp)'));
+};
+
+export const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB máximo
+  fileFilter
+});
+
+/**
+ * @desc    Subir avatar de usuario
+ * @route   POST /api/auth/avatar
+ * @access  Privado
+ */
+export const uploadAvatar = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'No autorizado'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se ha subido ningún archivo'
+      });
+    }
+
+    // Crear URL para el avatar
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+
+    // Actualizar el usuario con la nueva URL de avatar
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { avatarUrl },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      url: avatarUrl,
+      message: 'Avatar actualizado correctamente'
+    });
+  } catch (error: any) {
+    console.error('Error al subir avatar:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al subir avatar',
+      error: error.message
+    });
+  }
+};
 
 /**
  * @desc    Registrar nuevo usuario

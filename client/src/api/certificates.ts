@@ -1,5 +1,5 @@
-import axios from 'axios';
-import { API_URL } from '../config/api';
+// ruta: src/api/certificates.ts
+import apiClient from './client';
 
 export interface Certificate {
     _id: string;
@@ -15,31 +15,92 @@ export interface Certificate {
 // Verificar elegibilidad para certificado
 export const checkCertificateEligibility = async (courseId: string): Promise<{ isEligible: boolean; message: string }> => {
     try {
-        const response = await axios.get(
-            `${API_URL}/certificates/courses/${courseId}/eligibility`,
-            { withCredentials: true }
-        );
-        return response.data;
+        // Añadir console.log para depuración
+        console.log('Verificando elegibilidad para curso:', courseId);
+        
+        // Asegúrate de que esta URL coincida con tu configuración de rutas en el backend
+        const response = await apiClient.get(`/certificates/eligibility/${courseId}`);
+        
+        console.log('Respuesta de elegibilidad:', response.data);
+        
+        // Adaptar la respuesta al formato que espera el frontend
+        return {
+            isEligible: response.data.eligible || false,
+            message: response.data.message || 'No se pudo determinar la elegibilidad'
+        };
     } catch (error) {
         console.error('Error al verificar elegibilidad:', error);
+        
+        // Añadir más información de depuración
+        if (typeof error === 'object' && error !== null && 'response' in error) {
+            const err = error as import('axios').AxiosError;
+            console.error('Detalles del error:', {
+                status: err.response?.status,
+                data: err.response?.data,
+                headers: err.response?.headers,
+                url: err.config?.url
+            });
+        }
+        
+        let errorMessage = 'Error al verificar elegibilidad para el certificado';
+        if (
+            typeof error === 'object' &&
+            error !== null &&
+            'response' in error
+        ) {
+            const err = error as import('axios').AxiosError<{ message?: string }>;
+            if (
+                err.response &&
+                typeof err.response.data === 'object' &&
+                err.response.data !== null &&
+                'message' in err.response.data
+            ) {
+                errorMessage = err.response.data.message || errorMessage;
+            }
+        }
         return {
             isEligible: false,
-            message: 'Error al verificar elegibilidad para el certificado'
+            message: errorMessage
         };
     }
 };
-
 // Generar certificado
 export const generateCertificate = async (courseId: string): Promise<Certificate | null> => {
     try {
-        const response = await axios.post(
-            `${API_URL}/certificates/courses/${courseId}/generate`,
-            {},
-            { withCredentials: true }
-        );
-        return response.data;
+        console.log('Generando certificado para curso:', courseId);
+        
+        // Asegúrate de que esta URL coincida con tu configuración de rutas
+        const response = await apiClient.post(`/certificates/generate/${courseId}`);
+        
+        console.log('Respuesta de generación:', response.data);
+        
+        if (response.data.success) {
+            return {
+                _id: response.data._id,
+                userId: response.data.userId,
+                courseId: response.data.courseId,
+                courseTitle: response.data.courseTitle || '', // Ajusta según lo que devuelva tu backend
+                userName: response.data.userName || '',
+                issueDate: response.data.issueDate || new Date().toISOString(),
+                verificationCode: response.data.verificationCode || '',
+                downloadUrl: response.data.downloadUrl
+            };
+        }
+        return null;
     } catch (error) {
         console.error('Error al generar certificado:', error);
+        
+        // Import AxiosError at the top of the file if not already imported
+        // import { AxiosError } from 'axios';
+        if (typeof error === 'object' && error !== null && 'response' in error) {
+            const err = error as import('axios').AxiosError;
+            console.error('Detalles del error:', {
+                status: err.response?.status,
+                data: err.response?.data,
+                url: err.config?.url
+            });
+        }
+        
         return null;
     }
 };
@@ -47,10 +108,7 @@ export const generateCertificate = async (courseId: string): Promise<Certificate
 // Obtener certificados del usuario
 export const getUserCertificates = async (): Promise<Certificate[]> => {
     try {
-        const response = await axios.get(
-            `${API_URL}/certificates/user`,
-            { withCredentials: true }
-        );
+        const response = await apiClient.get(`/certificates/user`);
         return response.data;
     } catch (error) {
         console.error('Error al obtener certificados:', error);
@@ -61,13 +119,9 @@ export const getUserCertificates = async (): Promise<Certificate[]> => {
 // Descargar certificado
 export const downloadCertificate = async (certificateId: string): Promise<Blob | null> => {
     try {
-        const response = await axios.get(
-            `${API_URL}/certificates/${certificateId}/download`,
-            {
-                withCredentials: true,
-                responseType: 'blob'
-            }
-        );
+        const response = await apiClient.get(`/certificates/${certificateId}/download`, {
+            responseType: 'blob'
+        });
         return response.data;
     } catch (error) {
         console.error('Error al descargar certificado:', error);
@@ -78,7 +132,7 @@ export const downloadCertificate = async (certificateId: string): Promise<Blob |
 // Verificar certificado (ruta pública)
 export const verifyCertificate = async (verificationCode: string): Promise<Certificate | null> => {
     try {
-        const response = await axios.get(`${API_URL}/certificates/verify/${verificationCode}`);
+        const response = await apiClient.get(`/certificates/verify/${verificationCode}`);
         return response.data;
     } catch (error) {
         console.error('Error al verificar certificado:', error);

@@ -58,7 +58,7 @@ const Home: React.FC = () => {
                         </div>
                         <div className="md:w-1/2">
                             <img
-                                src="https://via.placeholder.com/600x400?text=CursifyNova"
+                                src="https://unifranz.edu.bo/wp-content/uploads/2024/07/HERRAMIENTAS-EVALUAR2-BLOG.jpg"
                                 alt="Aprendizaje online"
                                 className="rounded-lg shadow-lg"
                             />

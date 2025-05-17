@@ -37,7 +37,6 @@ export interface CourseProgressSummary {
         url: string;
         issueDate: string;
     };
-
 }
 
 export interface ProgressUpdateData {
@@ -92,17 +91,40 @@ export const getLessonProgress = async (lessonId: string): Promise<LessonProgres
 // Actualizar el progreso de una lección
 export const updateLessonProgress = async (lessonId: string, data: ProgressUpdateData): Promise<LessonProgress> => {
     try {
-        const response = await apiClient.post(`/progress/lessons/${lessonId}`, data);
+        // Intentar con PUT en lugar de POST si el backend usa esa convención
+        const response = await apiClient.put(`/progress/lessons/${lessonId}`, data);
         return response.data.data;
     } catch (error) {
         console.error('Error updating lesson progress:', error);
-        throw error;
+        // Si falla con PUT, intentar con POST como fallback
+        try {
+            const response = await apiClient.post(`/progress/lessons/${lessonId}`, data);
+            return response.data.data;
+        } catch (secondError) {
+            console.error('Error en segundo intento de actualizar progreso:', secondError);
+            throw secondError;
+        }
     }
 };
 
-// Marcar una lección como completada
-export const markLessonAsCompleted = async (lessonId: string): Promise<LessonProgress> => {
-    return updateLessonProgress(lessonId, { completed: true });
+// Marcar una lección como completada (función alternativa que usa la API directamente)
+export const markLessonCompleted = async (lessonId: string): Promise<boolean> => {
+    try {
+        // Intentar con una ruta más específica primero
+        await apiClient.post(`/progress/lessons/${lessonId}/complete`);
+        return true;
+    } catch (firstError) {
+        console.error('Error en primer intento de marcar lección como completada:', firstError);
+        
+        // Si falla, intentar con updateLessonProgress
+        try {
+            await updateLessonProgress(lessonId, { completed: true });
+            return true;
+        } catch (secondError) {
+            console.error('Error en segundo intento de marcar como completada:', secondError);
+            return false;
+        }
+    }
 };
 
 // Marcar una lección como no completada

@@ -43,9 +43,11 @@ const certificateController = __importStar(require("../controllers/certificateCo
 const controllerHandler_1 = require("../utils/controllerHandler");
 const router = express_1.default.Router();
 // Verificar si el usuario puede recibir certificado
-router.get('/courses/:courseId/eligibility', auth_1.authenticate, (0, controllerHandler_1.asyncHandler)(certificateController.checkEligibility));
+//router.get('/courses/:courseId/eligibility', authenticate, asyncHandler(certificateController.checkEligibility));
+router.get('/eligibility/:courseId', auth_1.authenticate, (0, controllerHandler_1.asyncHandler)(certificateController.checkEligibility));
 // Generar certificado
-router.post('/courses/:courseId/generate', auth_1.authenticate, (0, controllerHandler_1.asyncHandler)(certificateController.generateCertificate));
+router.post('/generate/:courseId', auth_1.authenticate, (0, controllerHandler_1.asyncHandler)(certificateController.generateCertificate));
+//router.post('/courses/:courseId/generate', authenticate, asyncHandler(certificateController.generateCertificate));
 // Descargar certificado
 router.get('/:certificateId/download', auth_1.authenticate, (0, controllerHandler_1.asyncHandler)(certificateController.downloadCertificate));
 // Verificar un certificado (ruta pública)

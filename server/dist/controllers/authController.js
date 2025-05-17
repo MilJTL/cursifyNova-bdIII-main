@@ -3,9 +3,91 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changePassword = exports.updateProfile = exports.getProfile = exports.login = exports.register = void 0;
+exports.changePassword = exports.updateProfile = exports.getProfile = exports.login = exports.register = exports.uploadAvatar = exports.upload = void 0;
 const User_1 = __importDefault(require("../models/User"));
 const jwt_1 = require("../utils/jwt");
+const multer_1 = __importDefault(require("multer"));
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
+// Configuración de multer para almacenar avatares
+const storage = multer_1.default.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = path_1.default.join(__dirname, '../../public/uploads/avatars');
+        // Crear el directorio si no existe
+        if (!fs_1.default.existsSync(uploadDir)) {
+            fs_1.default.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        // Generar nombre único para el archivo
+        const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
+        const ext = path_1.default.extname(file.originalname);
+        cb(null, `avatar-${uniqueSuffix}${ext}`);
+    }
+});
+// Filtro para permitir solo imágenes
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const mimetype = allowedTypes.test(file.mimetype);
+    const extname = allowedTypes.test(path_1.default.extname(file.originalname).toLowerCase());
+    if (mimetype && extname) {
+        return cb(null, true);
+    }
+    cb(new Error('Solo se permiten imágenes (jpeg, jpg, png, gif, webp)'));
+};
+exports.upload = (0, multer_1.default)({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB máximo
+    fileFilter
+});
+/**
+ * @desc    Subir avatar de usuario
+ * @route   POST /api/auth/avatar
+ * @access  Privado
+ */
+const uploadAvatar = async (req, res) => {
+    var _a;
+    try {
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'No autorizado'
+            });
+        }
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No se ha subido ningún archivo'
+            });
+        }
+        // Crear URL para el avatar
+        const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+        // Actualizar el usuario con la nueva URL de avatar
+        const updatedUser = await User_1.default.findByIdAndUpdate(userId, { avatarUrl }, { new: true });
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'Usuario no encontrado'
+            });
+        }
+        res.status(200).json({
+            success: true,
+            url: avatarUrl,
+            message: 'Avatar actualizado correctamente'
+        });
+    }
+    catch (error) {
+        console.error('Error al subir avatar:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error al subir avatar',
+            error: error.message
+        });
+    }
+};
+exports.uploadAvatar = uploadAvatar;
 /**
  * @desc    Registrar nuevo usuario
  * @route   POST /api/auth/register

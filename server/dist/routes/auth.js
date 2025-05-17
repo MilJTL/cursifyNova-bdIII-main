@@ -13,4 +13,6 @@ router.post('/login', (0, controllerHandler_1.asyncHandler)(authController_1.log
 router.get('/me', auth_1.authenticate, (0, controllerHandler_1.asyncHandler)(authController_1.getProfile));
 router.put('/profile', auth_1.authenticate, (0, controllerHandler_1.asyncHandler)(authController_1.updateProfile));
 router.put('/change-password', auth_1.authenticate, (0, controllerHandler_1.asyncHandler)(authController_1.changePassword));
+// Ruta para subir avatar - Usar authenticate en lugar de protect
+router.post('/avatar', auth_1.authenticate, authController_1.upload.single('avatar'), (0, controllerHandler_1.asyncHandler)(authController_1.uploadAvatar));
 exports.default = router;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProfile, updateProfile, type User } from '../../api/auth';
+import { getProfile, updateProfile, uploadAvatar, type User } from '../../api/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Componentes para las diferentes secciones del perfil
 import ProfileInfo from '../../components/profile/ProfileInfo';
@@ -9,12 +10,12 @@ import PasswordUpdate from '../../components/profile/PasswordUpdate';
 
 const UserProfile: React.FC = () => {
     const navigate = useNavigate();
+    const { refreshUser } = useAuth(); // Obtener la función refreshUser del contexto
     const [activeTab, setActiveTab] = useState('info');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [userData, setUserData] = useState<User | null>(null);
-
     // Cargar datos del usuario al montar el componente
     useEffect(() => {
         const loadUserProfile = async () => {
@@ -48,6 +49,10 @@ const UserProfile: React.FC = () => {
         try {
             const updatedUser = await updateProfile(profileData);
             setUserData(updatedUser);
+
+            // Actualizar el contexto de autenticación
+            await refreshUser();
+
             setSuccess('Perfil actualizado correctamente');
         } catch (err: unknown) {
             // Tipo error como unknown
@@ -58,6 +63,46 @@ const UserProfile: React.FC = () => {
                 setError(errorResponse || 'Error al actualizar el perfil');
             } else {
                 setError('Error al actualizar el perfil');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Nueva función para manejar la carga de avatar
+    const handleAvatarUpload = async (file: File) => {
+        setIsLoading(true);
+        setError(null);
+        setSuccess(null);
+
+        try {
+            // Subir el avatar
+            const result = await uploadAvatar(file);
+
+            // Actualizar el userData local con la nueva URL
+            if (userData) {
+                setUserData({
+                    ...userData,
+                    avatarUrl: result.url
+                });
+            }
+
+            // Verificar si refreshUser existe antes de llamarlo
+            if (typeof refreshUser === 'function') {
+                await refreshUser();
+            } else {
+                console.warn('refreshUser no está disponible en el contexto de autenticación');
+            }
+
+            setSuccess('Avatar actualizado correctamente');
+        } catch (err: unknown) {
+            console.error('Error al subir avatar:', err);
+            if (err && typeof err === 'object' && 'response' in err) {
+                type ErrorWithResponse = { response?: { data?: { message?: string } } };
+                const errorResponse = (err as ErrorWithResponse).response?.data?.message;
+                setError(errorResponse || 'Error al subir el avatar');
+            } else {
+                setError('Error al subir el avatar');
             }
         } finally {
             setIsLoading(false);
@@ -108,8 +153,8 @@ const UserProfile: React.FC = () => {
                     <nav className="-mb-px flex space-x-6">
                         <button
                             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'info'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                             onClick={() => setActiveTab('info')}
                         >
@@ -117,23 +162,14 @@ const UserProfile: React.FC = () => {
                         </button>
                         <button
                             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'security'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                             onClick={() => setActiveTab('security')}
                         >
                             Seguridad
                         </button>
-                        
-                        {/* <button
-                            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'preferences'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            onClick={() => setActiveTab('preferences')}
-                        >
-                            Preferencias
-                        </button> */}
+
                     </nav>
                 </div>
 
@@ -172,6 +208,7 @@ const UserProfile: React.FC = () => {
                         <ProfileInfo
                             user={userData}
                             onUpdate={handleProfileUpdate}
+                            onAvatarUpload={handleAvatarUpload} // Pasar la nueva función
                             isLoading={isLoading}
                         />
                     )}
@@ -182,14 +219,6 @@ const UserProfile: React.FC = () => {
                             isLoading={isLoading}
                         />
                     )}
-
-                    {/* {userData && activeTab === 'preferences' && (
-                        <ProfilePreferences
-                            user={userData}
-                            onUpdate={handleProfileUpdate}
-                            isLoading={isLoading}
-                        />
-                    )} */}
                 </div>
             </div>
         </div>

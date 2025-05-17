@@ -1,5 +1,5 @@
-import axios from 'axios';
-import { API_URL } from '../config/api';
+// ruta: src/api/comments.ts
+import apiClient from './client';
 
 export interface Comment {
   _id: string;
@@ -36,7 +36,7 @@ export interface NewReply {
 // Obtener comentarios de una lección
 export const getCommentsByLesson = async (lessonId: string): Promise<Comment[]> => {
   try {
-    const response = await axios.get(`${API_URL}/comments/lessons/${lessonId}/comments`);
+    const response = await apiClient.get(`/comments/lessons/${lessonId}/comments`);
     return response.data;
   } catch (error) {
     console.error('Error al obtener comentarios:', error);
@@ -47,11 +47,7 @@ export const getCommentsByLesson = async (lessonId: string): Promise<Comment[]> 
 // Crear un nuevo comentario
 export const createComment = async (lessonId: string, comment: NewComment): Promise<Comment | null> => {
   try {
-    const response = await axios.post(
-      `${API_URL}/comments/lessons/${lessonId}/comments`, 
-      comment,
-      { withCredentials: true }
-    );
+    const response = await apiClient.post(`/comments/lessons/${lessonId}/comments`, comment);
     return response.data;
   } catch (error) {
     console.error('Error al crear comentario:', error);
@@ -62,11 +58,7 @@ export const createComment = async (lessonId: string, comment: NewComment): Prom
 // Actualizar un comentario
 export const updateComment = async (commentId: string, content: NewComment): Promise<Comment | null> => {
   try {
-    const response = await axios.put(
-      `${API_URL}/comments/comments/${commentId}`, 
-      content,
-      { withCredentials: true }
-    );
+    const response = await apiClient.put(`/comments/comments/${commentId}`, content);
     return response.data;
   } catch (error) {
     console.error('Error al actualizar comentario:', error);
@@ -77,10 +69,7 @@ export const updateComment = async (commentId: string, content: NewComment): Pro
 // Eliminar un comentario
 export const deleteComment = async (commentId: string): Promise<boolean> => {
   try {
-    await axios.delete(
-      `${API_URL}/comments/comments/${commentId}`,
-      { withCredentials: true }
-    );
+    await apiClient.delete(`/comments/comments/${commentId}`);
     return true;
   } catch (error) {
     console.error('Error al eliminar comentario:', error);
@@ -91,11 +80,7 @@ export const deleteComment = async (commentId: string): Promise<boolean> => {
 // Añadir una respuesta a un comentario
 export const addReply = async (commentId: string, reply: NewReply): Promise<Comment | null> => {
   try {
-    const response = await axios.post(
-      `${API_URL}/comments/comments/${commentId}/replies`, 
-      reply,
-      { withCredentials: true }
-    );
+    const response = await apiClient.post(`/comments/comments/${commentId}/replies`, reply);
     return response.data;
   } catch (error) {
     console.error('Error al añadir respuesta:', error);
@@ -106,11 +91,7 @@ export const addReply = async (commentId: string, reply: NewReply): Promise<Comm
 // Actualizar una respuesta
 export const updateReply = async (commentId: string, replyId: string, content: NewReply): Promise<Comment | null> => {
   try {
-    const response = await axios.put(
-      `${API_URL}/comments/comments/${commentId}/replies/${replyId}`, 
-      content,
-      { withCredentials: true }
-    );
+    const response = await apiClient.put(`/comments/comments/${commentId}/replies/${replyId}`, content);
     return response.data;
   } catch (error) {
     console.error('Error al actualizar respuesta:', error);
@@ -119,15 +100,12 @@ export const updateReply = async (commentId: string, replyId: string, content: N
 };
 
 // Eliminar una respuesta
-export const deleteReply = async (commentId: string, replyId: string): Promise<boolean> => {
+export const deleteReply = async (commentId: string, replyId: string): Promise<Comment | null> => {
   try {
-    await axios.delete(
-      `${API_URL}/comments/comments/${commentId}/replies/${replyId}`,
-      { withCredentials: true }
-    );
-    return true;
+    const response = await apiClient.delete(`/comments/comments/${commentId}/replies/${replyId}`);
+    return response.data;
   } catch (error) {
     console.error('Error al eliminar respuesta:', error);
-    return false;
+    return null;
   }
 };
