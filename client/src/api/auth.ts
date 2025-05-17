@@ -89,6 +89,35 @@ export const updateProfile = async (profileData: Partial<User>): Promise<User> =
     return response.data.user;
 };
 
+export const uploadAvatar = async (avatarFile: File): Promise<{ url: string }> => {
+  try {
+    const formData = new FormData();
+    formData.append('avatar', avatarFile);
+    
+    // Usar la ruta correcta
+    const response = await apiClient.post('/auth/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    // Si la carga fue exitosa, actualizamos el usuario en localStorage
+    if (response.data && response.data.url) {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const updatedUser = {
+        ...currentUser,
+        avatarUrl: response.data.url
+      };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error al cargar el avatar:', error);
+    throw new Error('No se pudo cargar el avatar. Por favor, intenta de nuevo.');
+  }
+};
+
 export const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -121,15 +150,4 @@ export const getCurrentUser = (): User | null => {
 export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
     await apiClient.put('/auth/password', { currentPassword, newPassword });
 };
-export const uploadAvatar = async (avatarFile: File): Promise<{ url: string }> => {
-    const formData = new FormData();
-    formData.append('avatar', avatarFile);
-    
-    const response = await apiClient.post('/auth/avatar', formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data'
-        }
-    });
-    
-    return response.data;
-};
+

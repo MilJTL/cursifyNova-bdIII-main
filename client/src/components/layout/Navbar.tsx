@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -12,19 +12,37 @@ const Navbar: React.FC = () => {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     
-    // Estado local para debugging
+    // Usar useRef para evitar renderizados innecesarios
+    const authStateRef = useRef({
+        isAuth: isAuthenticated,
+        user: user
+    });
+    
+    // Estado local para la UI - evita parpadeos usando una transición suave
     const [authState, setAuthState] = useState({
         isAuth: isAuthenticated,
         user: user
     });
     
-    // Efecto para actualizar el estado local cuando cambian los datos de autenticación
+    // Efecto para actualizar el estado de referencia sin causar re-renderizados
     useEffect(() => {
-        console.log('Navbar: Estado de autenticación actualizado', { isAuthenticated, user });
-        setAuthState({
+        authStateRef.current = {
             isAuth: isAuthenticated,
             user: user
-        });
+        };
+    }, [isAuthenticated, user]);
+    
+    // Efecto separado para actualizar el estado visual con un pequeño retraso,
+    // esto evita parpadeos cuando cambia rápidamente el estado de autenticación
+    useEffect(() => {
+        const updateTimer = setTimeout(() => {
+            setAuthState({
+                isAuth: isAuthenticated,
+                user: user
+            });
+        }, 10); // Pequeño retraso para evitar parpadeos
+
+        return () => clearTimeout(updateTimer);
     }, [isAuthenticated, user]);
 
     const handleLogout = () => {
@@ -49,6 +67,30 @@ const Navbar: React.FC = () => {
         }
     };
 
+    // Función para generar el avatar del usuario de forma consistente
+    const renderUserAvatar = (size: 'sm' | 'md' = 'sm') => {
+        const dimensions = size === 'sm' ? 'h-8 w-8' : 'h-10 w-10';
+        
+        if (authState.user?.avatarUrl) {
+            return (
+                <img
+                    className={`${dimensions} rounded-full object-cover`}
+                    src={authState.user.avatarUrl}
+                    alt={authState.user.nombre || "Usuario"}
+                    onError={(e) => {
+                        e.currentTarget.src = '/assets/default-avatar.png';
+                    }}
+                />
+            );
+        } else {
+            return (
+                <div className={`${dimensions} rounded-full bg-blue-500 flex items-center justify-center text-white`}>
+                    {authState.user?.nombre ? authState.user.nombre.charAt(0).toUpperCase() : "U"}
+                </div>
+            );
+        }
+    };
+
     return (
         <nav className="bg-white shadow">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -56,7 +98,8 @@ const Navbar: React.FC = () => {
                     <div className="flex">
                         {/* Logo */}
                         <div className="flex-shrink-0 flex items-center">
-                            <Link to="/" className="text-blue-600 font-bold text-xl">
+                            <Link to="/" className="flex items-center text-blue-600 font-bold text-xl">
+                                <img src="https://cdn.pixabay.com/photo/2020/09/26/08/36/logo-5603463_960_720.png" alt="Logo" className="h-8 w-8 mr-2" />
                                 CursifyNova
                             </Link>
                         </div>
@@ -104,7 +147,6 @@ const Navbar: React.FC = () => {
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                 />
-                                {/* Botón opcional de búsqueda (visible solo en pantallas pequeñas) */}
                                 <button
                                     type="submit"
                                     className="absolute inset-y-0 right-0 pr-3 flex items-center md:hidden"
@@ -137,66 +179,62 @@ const Navbar: React.FC = () => {
                             </>
                         ) : (
                             <div className="ml-4 relative flex-shrink-0">
-                                <div>
+                                <div className="flex items-center">
+                                    {/* Nombre del usuario junto al avatar */}
+                                    <span className="hidden md:block mr-3 text-sm font-medium text-gray-700">
+                                        {authState.user?.nombre || "Usuario"}
+                                    </span>
+                                    
                                     <button
                                         type="button"
-                                        className="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                        className="flex items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full"
                                         id="user-menu"
                                         aria-expanded={userMenuOpen}
                                         aria-haspopup="true"
                                         onClick={() => setUserMenuOpen(!userMenuOpen)}
                                     >
                                         <span className="sr-only">Abrir menú de usuario</span>
-                                        {authState.user?.avatarUrl ? (
-                                            <img
-                                                className="h-8 w-8 rounded-full"
-                                                src={authState.user.avatarUrl}
-                                                alt={authState.user.nombre || "Usuario"}
-                                                onError={(e) => {
-                                                    e.currentTarget.src = '/assets/default-avatar.png';
-                                                }}
-                                            />
-                                        ) : (
-                                            <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                                                {authState.user?.nombre ? authState.user.nombre.charAt(0).toUpperCase() : "U"}
-                                            </div>
-                                        )}
+                                        {renderUserAvatar('sm')}
                                     </button>
                                 </div>
-                                {userMenuOpen && (
-                                    <div
-                                        className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
-                                        role="menu"
-                                        aria-orientation="vertical"
-                                        aria-labelledby="user-menu"
+                                
+                                {/* Menú desplegable de usuario con transición suave */}
+                                <div
+                                    className={`transition-all duration-200 ease-in-out transform ${
+                                        userMenuOpen 
+                                            ? 'opacity-100 scale-100 translate-y-0' 
+                                            : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
+                                    } absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50`}
+                                    role="menu"
+                                    aria-orientation="vertical"
+                                    aria-labelledby="user-menu"
+                                >
+                                    <Link
+                                        to="/profile"
+                                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        role="menuitem"
+                                        onClick={() => setUserMenuOpen(false)}
                                     >
+                                        Mi Perfil
+                                    </Link>
+                                    {(authState.user?.rol === "admin" || authState.user?.rol === "instructor") && (
                                         <Link
-                                            to="/profile"
+                                            to="/admin/dashboard"
                                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             role="menuitem"
                                             onClick={() => setUserMenuOpen(false)}
                                         >
-                                            Mi Perfil
+                                            Gestionar Cursos
                                         </Link>
-                                        {(authState.user?.rol === "admin" || authState.user?.rol === "admin") && (
-                                            <Link
-                                                to="/admin/dashboard"
-                                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                role="menuitem"
-                                                onClick={() => setUserMenuOpen(false)}
-                                            >
-                                                Gestionar Cursos
-                                            </Link>
-                                        )}
-                                        <button
-                                            onClick={handleLogout}
-                                            className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            role="menuitem"
-                                        >
-                                            Cerrar sesión
-                                        </button>
-                                    </div>
-                                )}
+                                    )}
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full text-left block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                        role="menuitem"
+                                    >
+                                        Cerrar sesión
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -236,115 +274,107 @@ const Navbar: React.FC = () => {
                 </div>
             </div>
 
-            {/* Menú móvil */}
-            {mobileMenuOpen && (
-                <div className="md:hidden">
-                    <div className="px-2 pt-2 pb-3 space-y-1">
+            {/* Menú móvil con transición suave */}
+            <div 
+                className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+                    mobileMenuOpen ? 'max-h-96' : 'max-h-0'
+                }`}
+            >
+                <div className="px-2 pt-2 pb-3 space-y-1">
+                    <Link
+                        to="/"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                        onClick={() => setMobileMenuOpen(false)}
+                    >
+                        Inicio
+                    </Link>
+                    <Link
+                        to="/courses"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                        onClick={() => setMobileMenuOpen(false)}
+                    >
+                        Cursos
+                    </Link>
+                    {authState.isAuth && (
                         <Link
-                            to="/"
+                            to="/dashboard"
                             className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                            onClick={() => setMobileMenuOpen(false)}
                         >
-                            Inicio
+                            Mi Panel
                         </Link>
-                        <Link
-                            to="/courses"
-                            className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                        >
-                            Cursos
-                        </Link>
-                        {authState.isAuth && (
-                            <Link
-                                to="/dashboard"
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                            >
-                                Mi Panel
-                            </Link>
-                        )}
-                    </div>
+                    )}
+                </div>
 
-                    {/* Búsqueda en móvil */}
-                    <div className="px-4 pb-3">
-                        <form onSubmit={handleSearch}>
-                            <input
-                                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                type="text"
-                                placeholder="Buscar cursos..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </form>
-                    </div>
+                {/* Búsqueda en móvil */}
+                <div className="px-4 pb-3">
+                    <form onSubmit={handleSearch}>
+                        <input
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            type="text"
+                            placeholder="Buscar cursos..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </form>
+                </div>
 
-                    {/* Acciones de usuario en móvil */}
-                    <div className="pt-4 pb-3 border-t border-gray-200">
-                        {authState.isAuth ? (
-                            <>
-                                <div className="flex items-center px-4">
-                                    {authState.user?.avatarUrl ? (
-                                        <img
-                                            className="h-10 w-10 rounded-full"
-                                            src={authState.user.avatarUrl}
-                                            alt={authState.user.nombre || "Usuario"}
-                                            onError={(e) => {
-                                                e.currentTarget.src = '/assets/default-avatar.png';
-                                            }}
-                                        />
-                                    ) : (
-                                        <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                                            {authState.user?.nombre ? authState.user.nombre.charAt(0).toUpperCase() : "U"}
-                                        </div>
-                                    )}
-                                    <div className="ml-3">
-                                        <div className="text-base font-medium text-gray-800">{authState.user?.nombre}</div>
-                                        <div className="text-sm font-medium text-gray-500">{authState.user?.email}</div>
-                                    </div>
+                {/* Acciones de usuario en móvil */}
+                <div className="pt-4 pb-3 border-t border-gray-200">
+                    {authState.isAuth ? (
+                        <>
+                            <div className="flex items-center px-4">
+                                {renderUserAvatar('md')}
+                                <div className="ml-3">
+                                    <div className="text-base font-medium text-gray-800">{authState.user?.nombre}</div>
+                                    <div className="text-sm font-medium text-gray-500">{authState.user?.email}</div>
                                 </div>
-                                <div className="mt-3 space-y-1">
+                            </div>
+                            <div className="mt-3 space-y-1">
+                                <Link
+                                    to="/profile"
+                                    className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    Mi Perfil
+                                </Link>
+                                {(authState.user?.rol === "instructor" || authState.user?.rol === "admin") && (
                                     <Link
-                                        to="/profile"
+                                        to="/instructor/courses"
                                         className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                                         onClick={() => setMobileMenuOpen(false)}
                                     >
-                                        Mi Perfil
+                                        Gestionar Cursos
                                     </Link>
-                                    {(authState.user?.rol === "instructor" || authState.user?.rol === "admin") && (
-                                        <Link
-                                            to="/instructor/courses"
-                                            className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                                            onClick={() => setMobileMenuOpen(false)}
-                                        >
-                                            Gestionar Cursos
-                                        </Link>
-                                    )}
-                                    <button
-                                        onClick={handleLogout}
-                                        className="w-full text-left block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                                    >
-                                        Cerrar sesión
-                                    </button>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="px-4 space-y-2">
-                                <Link
-                                    to="/login"
-                                    className="block text-center w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-blue-700 bg-blue-100 hover:bg-blue-200"
-                                    onClick={() => setMobileMenuOpen(false)}
+                                )}
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full text-left block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
                                 >
-                                    Iniciar sesión
-                                </Link>
-                                <Link
-                                    to="/register"
-                                    className="block text-center w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
-                                    onClick={() => setMobileMenuOpen(false)}
-                                >
-                                    Registrarse
-                                </Link>
+                                    Cerrar sesión
+                                </button>
                             </div>
-                        )}
-                    </div>
+                        </>
+                    ) : (
+                        <div className="px-4 space-y-2">
+                            <Link
+                                to="/login"
+                                className="block text-center w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-blue-700 bg-blue-100 hover:bg-blue-200"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Iniciar sesión
+                            </Link>
+                            <Link
+                                to="/register"
+                                className="block text-center w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                Registrarse
+                            </Link>
+                        </div>
+                    )}
                 </div>
-            )}
+            </div>
         </nav>
     );
 };

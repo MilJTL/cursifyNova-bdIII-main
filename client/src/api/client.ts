@@ -7,6 +7,8 @@ const apiClient = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    // Deshabilitar withCredentials para evitar problemas de CORS
+    withCredentials: false
 });
 
 // Interceptor para agregar token de autenticación
@@ -19,6 +21,30 @@ apiClient.interceptors.request.use(
         return config;
     },
     (error) => Promise.reject(error)
+);
+
+// Agregar un interceptor para manejar errores de respuesta
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        // Registrar detalles del error para facilitar la depuración
+        console.error(
+            'Error en solicitud API:',
+            error.response?.status,
+            error.response?.data || error.message,
+            error.config?.url
+        );
+        
+        // Si es un error 401 (no autorizado), podríamos manejar el logout aquí
+        if (error.response?.status === 401) {
+            console.warn('Sesión expirada o no autorizado');
+            // Implementar lógica de logout si es necesario
+            // localStorage.removeItem('token');
+            // window.location.href = '/login';
+        }
+        
+        return Promise.reject(error);
+    }
 );
 
 export default apiClient;
