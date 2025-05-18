@@ -81,6 +81,7 @@ function App() {
                 <Route path="courses/:courseId/students" element={<StudentManagement />} />
               </Route>
             </Route>
+          
 
             {/* Página 404 */}
             <Route path="*" element={<NotFound />} />
