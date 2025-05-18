@@ -1,6 +1,7 @@
+// ruta: src/pages/instructor/EditCourse.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getCourseById, createCourse, updateCourse,type CourseFormData } from '../../api/courses';
+import { getCourseById, createCourse, updateCourse, type CourseFormData } from '../../api/courses';
 
 const CourseEditor: React.FC = () => {
     const { courseId } = useParams<{ courseId: string }>();
@@ -20,6 +21,8 @@ const CourseEditor: React.FC = () => {
     const [currentTag, setCurrentTag] = useState('');
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imageUrl, setImageUrl] = useState(''); // Estado para la URL de imagen
+    const [showUrlInput, setShowUrlInput] = useState(false); // Estado para mostrar/ocultar la entrada de URL
     const [loading, setLoading] = useState(isEditMode);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -46,6 +49,7 @@ const CourseEditor: React.FC = () => {
 
                 if (courseData.imagenCurso) {
                     setPreviewImage(courseData.imagenCurso);
+                    setImageUrl(courseData.imagenCurso);
                 }
 
                 setError(null);
@@ -89,6 +93,21 @@ const CourseEditor: React.FC = () => {
         }));
     };
 
+    // Manejar cambio en la URL de la imagen
+    const handleImageUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setImageUrl(e.target.value);
+    };
+
+    // Aplicar la URL de la imagen
+    const applyImageUrl = () => {
+        if (imageUrl.trim()) {
+            setPreviewImage(imageUrl);
+            setImageFile(null); // Limpiar archivo si había uno
+            formData.imagenCurso = imageUrl; // Guardar la URL en formData
+            setShowUrlInput(false); // Ocultar el input
+        }
+    };
+
     // Manejar tags/etiquetas
     const handleAddTag = () => {
         if (currentTag.trim() && !formData.etiquetas.includes(currentTag.trim())) {
@@ -107,28 +126,13 @@ const CourseEditor: React.FC = () => {
         }));
     };
 
-    // Manejar cambio de imagen
+    // Modificar la función handleImageChange para que simplemente muestre un mensaje
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-
-            if (file.size > 5 * 1024 * 1024) { // 5MB max
-                setError('La imagen es demasiado grande. El tamaño máximo es 5MB.');
-                return;
-            }
-
-            setImageFile(file);
-
-            // Previsualización
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreviewImage(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
+        setError('Para una mejor compatibilidad, por favor usa una URL de imagen directa en lugar de subir archivos.');
+        setShowUrlInput(true);
     };
 
-    // Enviar formulario
+    // En la función handleSubmit, reemplazo la parte de manejo de imágenes:
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -152,16 +156,9 @@ const CourseEditor: React.FC = () => {
             setSaving(true);
             setError(null);
 
-            // Subir imagen si existe (aquí deberías implementar la lógica real)
-            let imagenCurso = formData.imagenCurso;
-            if (imageFile) {
-                // Simular subida de imagen - En un caso real se haría un upload a un servidor
-                // y se obtendría la URL resultante
-                imagenCurso = URL.createObjectURL(imageFile);
-                // En la implementación real sería algo como:
-                // const uploadResponse = await uploadImage(imageFile);
-                // imagenCurso = uploadResponse.url;
-            }
+            // Manejo simplificado de imágenes
+            // Si tenemos URL de imagen (ya sea de previewImage o imageUrl), la usamos directamente
+            const imagenCurso = imageUrl || previewImage || '';
 
             const courseData = {
                 ...formData,
@@ -273,12 +270,17 @@ const CourseEditor: React.FC = () => {
                                                 src={previewImage}
                                                 alt="Vista previa"
                                                 className="mx-auto h-32 object-cover rounded"
+                                                onError={() => {
+                                                    setError('Error al cargar la imagen. Verifique la URL.');
+                                                }}
                                             />
                                             <button
                                                 type="button"
                                                 onClick={() => {
                                                     setPreviewImage(null);
                                                     setImageFile(null);
+                                                    setImageUrl('');
+                                                    formData.imagenCurso = '';
                                                 }}
                                                 className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
                                             >
@@ -287,21 +289,33 @@ const CourseEditor: React.FC = () => {
                                                 </svg>
                                             </button>
                                         </div>
-                                        <div className="flex text-sm text-gray-600 mt-2">
-                                            <label
-                                                htmlFor="file-upload"
-                                                className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
+                                        <div className="flex flex-col space-y-2 text-sm text-gray-600 mt-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowUrlInput(!showUrlInput)}
+                                                className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
                                             >
-                                                <span>Cambiar imagen</span>
-                                                <input
-                                                    id="file-upload"
-                                                    name="file-upload"
-                                                    type="file"
-                                                    className="sr-only"
-                                                    accept="image/*"
-                                                    onChange={handleImageChange}
-                                                />
-                                            </label>
+                                                {showUrlInput ? 'Cancelar' : 'Cambiar URL de imagen'}
+                                            </button>
+                                            
+                                            {showUrlInput && (
+                                                <div className="flex mt-2">
+                                                    <input
+                                                        type="url"
+                                                        value={imageUrl}
+                                                        onChange={handleImageUrlChange}
+                                                        placeholder="https://ejemplo.com/imagen.jpg"
+                                                        className="flex-1 block px-3 py-2 text-sm border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={applyImageUrl}
+                                                        className="px-3 py-2 bg-blue-600 text-white text-sm rounded-r-md"
+                                                    >
+                                                        Aplicar
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (
@@ -320,24 +334,52 @@ const CourseEditor: React.FC = () => {
                                                 strokeLinejoin="round"
                                             />
                                         </svg>
-                                        <div className="flex text-sm text-gray-600">
-                                            <label
-                                                htmlFor="file-upload"
-                                                className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
-                                            >
-                                                <span>Subir una imagen</span>
-                                                <input
-                                                    id="file-upload"
-                                                    name="file-upload"
-                                                    type="file"
-                                                    className="sr-only"
-                                                    accept="image/*"
-                                                    onChange={handleImageChange}
-                                                />
-                                            </label>
-                                            <p className="pl-1">o arrastrar y soltar</p>
-                                        </div>
-                                        <p className="text-xs text-gray-500">PNG, JPG, GIF hasta 5MB</p>
+                                        
+                                        {showUrlInput ? (
+                                            <div className="flex flex-col space-y-2">
+                                                <div className="flex">
+                                                    <input
+                                                        type="url"
+                                                        value={imageUrl}
+                                                        onChange={handleImageUrlChange}
+                                                        placeholder="https://ejemplo.com/imagen.jpg"
+                                                        className="flex-1 block px-3 py-2 text-sm border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={applyImageUrl}
+                                                        className="px-3 py-2 bg-blue-600 text-white text-sm rounded-r-md"
+                                                    >
+                                                        Aplicar
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Introduce la URL directa de una imagen (jpg, png, etc.)
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowUrlInput(false)}
+                                                    className="text-sm text-gray-500 hover:text-gray-700"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="mt-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowUrlInput(true)}
+                                                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                                                    >
+                                                        Añadir URL de imagen
+                                                    </button>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                    Usa una URL directa para la imagen del curso.
+                                                </p>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>

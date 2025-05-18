@@ -1,3 +1,4 @@
+// src/pages/student/StudentCourseView.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getCourseById, getCourseProgress, type Course } from '../../api/courses';
@@ -665,12 +666,11 @@ const StudentCourseView: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Contenido de la lección */}
                             <div className="mb-8">
-                                {currentLesson.tipo === 'video' && currentLesson.videoUrl && (
+                                {currentLesson.tipo === 'video' ? (
                                     <div className="mb-4" style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
                                         <iframe
-                                            src={formatYoutubeUrl(currentLesson.videoUrl.toString())}
+                                            src={formatYoutubeUrl(currentLesson.contenido)}
                                             title={currentLesson.titulo}
                                             allowFullScreen
                                             style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
@@ -678,15 +678,12 @@ const StudentCourseView: React.FC = () => {
                                             frameBorder="0"
                                         ></iframe>
                                     </div>
-                                )}
-
-                                {currentLesson.contenido && (
+                                ) : (
                                     <div
                                         className="prose max-w-none"
-                                        dangerouslySetInnerHTML={{ __html: currentLesson.contenido }}
+                                        dangerouslySetInnerHTML={{ __html: currentLesson.contenido || '' }}
                                     />
                                 )}
-
                                 {/* Recursos adicionales */}
                                 {currentLesson.recursosAdicionales && currentLesson.recursosAdicionales.length > 0 && (
                                     <div className="mt-8 border-t border-gray-200 pt-6">
@@ -719,6 +716,7 @@ const StudentCourseView: React.FC = () => {
                                     </div>
                                 )}
                             </div>
+
 
                             {/* Sección de comentarios */}
                             <div className="mt-10 border-t border-gray-200 pt-8">

@@ -17,6 +17,8 @@ const LessonForm: React.FC<LessonFormProps> = ({ lesson, onSubmit, onCancel }) =
         recursosAdicionales: []
     });
 
+    const [videoUrl, setVideoUrl] = useState('');
+    const [videoPreview, setVideoPreview] = useState<string | null>(null);
     const [recurso, setRecurso] = useState({ titulo: '', url: '', tipo: 'link' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -31,11 +33,34 @@ const LessonForm: React.FC<LessonFormProps> = ({ lesson, onSubmit, onCancel }) =
                 esGratis: lesson.esGratis,
                 recursosAdicionales: lesson.recursosAdicionales || []
             });
+            
+            // Si es un video, configurar la vista previa
+            if (lesson.tipo === 'video' && lesson.contenido) {
+                setVideoUrl(lesson.contenido);
+                setVideoPreview(formatVideoUrl(lesson.contenido));
+            }
         }
     }, [lesson]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
+
+        // Manejar cambio de tipo
+        if (name === 'tipo') {
+            // Limpiar contenido al cambiar entre tipos
+            setFormData(prev => ({ 
+                ...prev, 
+                [name]: value as "texto" | "video" | "quiz",
+                contenido: ''
+            }));
+            
+            // Resetear vista previa de video si cambia a otro tipo
+            if (value !== 'video') {
+                setVideoUrl('');
+                setVideoPreview(null);
+            }
+            return;
+        }
 
         // Manejar checkbox
         if (type === 'checkbox') {
@@ -50,8 +75,56 @@ const LessonForm: React.FC<LessonFormProps> = ({ lesson, onSubmit, onCancel }) =
             return;
         }
 
+        // Si es la URL del video
+        if (name === 'contenido' && formData.tipo === 'video') {
+            setVideoUrl(value);
+            setFormData(prev => ({ ...prev, [name]: value }));
+            return;
+        }
+
         // Manejar otros campos
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    // Función para formatear URL de video para embeber
+    const formatVideoUrl = (url: string): string | null => {
+        // YouTube
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([^& \n<]+)/;
+        const youtubeMatch = url.match(youtubeRegex);
+        
+        if (youtubeMatch && youtubeMatch[1]) {
+            return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+        }
+        
+        // Vimeo
+        const vimeoRegex = /(?:https?:\/\/)?(?:www\.)?(?:vimeo\.com)\/([0-9]+)/;
+        const vimeoMatch = url.match(vimeoRegex);
+        
+        if (vimeoMatch && vimeoMatch[1]) {
+            return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+        }
+        
+        return null;
+    };
+
+    // Vista previa del video
+    const handlePreviewVideo = () => {
+        if (!videoUrl.trim()) {
+            setError('Ingresa una URL de video válida');
+            setVideoPreview(null);
+            return;
+        }
+        
+        const embedUrl = formatVideoUrl(videoUrl);
+        
+        if (embedUrl) {
+            setVideoPreview(embedUrl);
+            setFormData(prev => ({ ...prev, contenido: videoUrl }));
+            setError(null);
+        } else {
+            setError('La URL no es compatible. Por favor usa YouTube o Vimeo.');
+            setVideoPreview(null);
+        }
     };
 
     const handleRecursoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -190,39 +263,68 @@ const LessonForm: React.FC<LessonFormProps> = ({ lesson, onSubmit, onCancel }) =
                             </div>
 
                             <div className="mb-4">
-    <label htmlFor="contenido" className="block text-sm font-medium text-gray-700 mb-1">
-        {formData.tipo === 'video' ? 'URL del video' : 'Contenido'} <span className="text-red-600">*</span>
-    </label>
-    
-    {formData.tipo === 'video' ? (
-        <input
-            type="url"
-            id="contenido"
-            name="contenido"
-            value={formData.contenido}
-            onChange={handleChange}
-            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-            placeholder="https://www.youtube.com/watch?v=..."
-            required
-        />
-    ) : (
-        <textarea
-            id="contenido"
-            name="contenido"
-            rows={6}
-            value={formData.contenido}
-            onChange={handleChange}
-            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border border-gray-300 rounded-md"
-            required
-        ></textarea>
-    )}
-    
-    <p className="mt-1 text-xs text-gray-500">
-        {formData.tipo === 'video' 
-            ? 'Ingresa la URL completa del video de YouTube o Vimeo' 
-            : 'Soporta formato Markdown para texto enriquecido'}
-    </p>
-</div>
+                                {formData.tipo === 'video' ? (
+                                    <div>
+                                        <label htmlFor="videoUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                                            URL del video <span className="text-red-600">*</span>
+                                        </label>
+                                        <div className="flex">
+                                            <input
+                                                type="url"
+                                                id="contenido"
+                                                name="contenido"
+                                                value={videoUrl}
+                                                onChange={handleChange}
+                                                className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-l-md"
+                                                placeholder="https://www.youtube.com/watch?v=..."
+                                                required
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handlePreviewVideo}
+                                                className="px-3 py-2 bg-blue-600 text-white text-sm rounded-r-md"
+                                            >
+                                                Previsualizar
+                                            </button>
+                                        </div>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            Ingresa la URL completa del video de YouTube o Vimeo
+                                        </p>
+
+                                        {videoPreview && (
+                                            <div className="mt-4 border border-gray-300 rounded-md overflow-hidden">
+                                                <div className="aspect-w-16 aspect-h-9">
+                                                    <iframe 
+                                                        src={videoPreview} 
+                                                        title="Video Preview" 
+                                                        className="w-full h-56"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                                        allowFullScreen
+                                                    ></iframe>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label htmlFor="contenido" className="block text-sm font-medium text-gray-700 mb-1">
+                                            Contenido <span className="text-red-600">*</span>
+                                        </label>
+                                        <textarea
+                                            id="contenido"
+                                            name="contenido"
+                                            rows={6}
+                                            value={formData.contenido}
+                                            onChange={handleChange}
+                                            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border border-gray-300 rounded-md"
+                                            required
+                                        ></textarea>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            Soporta formato Markdown para texto enriquecido
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
 
                             <div className="mb-4">
                                 <h4 className="text-sm font-medium text-gray-700 mb-2">Recursos adicionales</h4>
