@@ -14,7 +14,7 @@ export const config = {
     jwtExpire: process.env.JWT_EXPIRE || '30d',
     
     // Base de datos - MongoDB
-    mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/CursosNova',
+    mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/cursify',
     
     // Redis (para caché)
     redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',

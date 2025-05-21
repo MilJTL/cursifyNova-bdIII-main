@@ -4,7 +4,11 @@ import { config } from './index';
 // Cliente de Redis
 const redisClient = createClient({
   url: config.redisUrl,
-  database: 12
+  socket: {
+    tls: true,                  // <- Obligatorio para Upstash
+    host: new URL(config.redisUrl).hostname, 
+    rejectUnauthorized: false    // <- Necesario con SSL
+  }
 });
 
 // Eventos de conexión

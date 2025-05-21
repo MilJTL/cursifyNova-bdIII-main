@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
+    "build": "npm install typescript && node_modules/typescript/bin/tsc",
+    "prebuild": "rm -rf dist || true",
+  "postinstall": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -25,7 +27,8 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.2",
     "pdfkit": "^0.17.1",
-    "redis": "^5.0.1"
+    "redis": "^5.0.1",
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
@@ -40,7 +43,6 @@
     "@types/redis": "^4.0.11",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.3"
+    "ts-node-dev": "^2.0.0"
   }
 }
