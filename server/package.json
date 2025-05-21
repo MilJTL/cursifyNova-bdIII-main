@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "npm install typescript && ./node_modules/.bin/tsc",
+    "build": "npm install typescript && node_modules/typescript/bin/tsc",
     "prebuild": "rm -rf dist || true",
   "postinstall": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
