@@ -6,6 +6,7 @@ const redisClient = createClient({
   url: config.redisUrl,
   socket: {
     tls: true,                  // <- Obligatorio para Upstash
+    host: new URL(config.redisUrl).hostname, 
     rejectUnauthorized: false    // <- Necesario con SSL
   }
 });
