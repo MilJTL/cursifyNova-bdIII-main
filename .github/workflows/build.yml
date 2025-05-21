@@ -1,0 +1,32 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]  # Cambia a "master" si es tu rama principal
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'  # Usa la versión de Node.js que necesites
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project (TypeScript → JavaScript)
+        run: npm run build
+
+      - name: Upload dist/ as artifact (opcional)
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-folder
+          path: dist/
