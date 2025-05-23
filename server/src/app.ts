@@ -18,7 +18,7 @@ app.use(helmet());
 
 // Configuración de CORS
 app.use(cors({
-    origin: 'https://cursify-nova-bd-iii-main-pnfc4m9u0-miltons-projects-6aa104f3.vercel.app',
+    origin: 'https://cursify-nova-bd-iii-main-cv8o5gyhj-miltons-projects-6aa104f3.vercel.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
