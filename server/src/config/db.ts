@@ -4,10 +4,7 @@ import { config } from './index';
 
 const connectDB = async (): Promise<void> => {
     try {
-        if (!config.mongoUri) {
-            throw new Error('MONGO_URI no está definido en las variables de entorno');
-        }
-        await mongoose.connect(config.mongoUri);
+        await mongoose.connect(process.env.MONGO_URI!);
         console.log('MongoDB connected successfully');
     } catch (error) {
         console.error('MongoDB connection error:', error);
