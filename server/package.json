@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "npx tsc",
+    "build": "node -e 'require(\"typescript\").transpileModule(require(\"fs\").readFileSync(\"./src/server.ts\", \"utf-8\"), require(\"./tsconfig.json\")).outputText > dist/server.js'",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prestart": "npm run build" 
   },
