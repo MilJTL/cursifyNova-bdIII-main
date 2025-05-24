@@ -21,7 +21,7 @@ const router = Router();
 
 //cors de prueba
 router.get('/', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Origin', 'https://cursify-nova-bd-iii-main-kxceqrkg3-miltons-projects-6aa104f3.vercel.app');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   next();
