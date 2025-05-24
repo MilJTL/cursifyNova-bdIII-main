@@ -40,7 +40,7 @@ if (config.nodeEnv !== 'test') {
 // Ruta raíz para comprobar el estado de la API
 app.get('/', (req, res) => {
     res.json({
-        message: "API de CursifyNova funcionando correctamente",
+        message: "¡API de CursifyNova funcionando CORRECTAMENTE - TEST!",
         environment: config.nodeEnv,
         version: "1.0.0"
     });
