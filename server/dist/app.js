@@ -1,4 +1,4 @@
-/*"use strict";
+"use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -54,8 +54,10 @@ app.use((req, res) => {
         message: 'Ruta no encontrada'
     });
 });
-exports.default = app;*/
+exports.default = app;
 
+/*
+//usando un despliegue simplificado para pruebas
 const express = require('express');
 const app = express();
 const port = process.env.PORT || 3000;
@@ -76,4 +78,4 @@ app.listen(port, () => {
   console.log(`Servidor simplificado escuchando en el puerto ${port}`);
 });
 
-module.exports = app;
+module.exports = app;*/
