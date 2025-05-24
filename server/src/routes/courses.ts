@@ -29,6 +29,13 @@ router.get('/:id/full', authenticate, cacheResponse(300), asyncHandler(getFullCo
 // Rutas que modifican datos - limpian caché relacionada con cursos
 router.post('/', authenticate, clearCache('api:/api/courses*'), asyncHandler(createCourse));
 router.post('/:id/enroll', authenticate, clearCache(`api:/api/courses*`), asyncHandler(enrollCourse));
+
+//agregando ruta de prueba
+router.get('/', (req, res) => {
+  res.status(200).json({ message: '¡Prueba de ruta de cursos en Railway!' });
+});
+
+
 router.put('/:id', authenticate, clearCache(`api:/api/courses*`), asyncHandler(updateCourse));
 router.delete('/:id', authenticate, clearCache(`api:/api/courses*`), asyncHandler(deleteCourse));
 
