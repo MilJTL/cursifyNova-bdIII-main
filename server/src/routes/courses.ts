@@ -17,7 +17,7 @@ import { cacheResponse, clearCache } from '../middlewares/cacheMiddleware';
 const router = Router();
 
 // Rutas públicas con caché
-router.get('/', cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
+router.get('/',cors(), cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
 /*añadiendo nueva ruta
 router.get('/', (req, res) => {
     res.status(200).json({ message: '¡Ruta de cursos funciona!' });
