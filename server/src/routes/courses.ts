@@ -30,6 +30,6 @@ router.put('/:id', authenticate, clearCache(`api:/api/courses*`), asyncHandler(u
 router.delete('/:id', authenticate, clearCache(`api:/api/courses*`), asyncHandler(deleteCourse));
 
 // Ruta dinámica con parámetro - SIEMPRE debe ir AL FINAL
-router.get('/:id', cacheResponse(600), asyncHandler(getCourseById)); // Caché por 10 minutos
+//router.get('/:id', cacheResponse(600), asyncHandler(getCourseById)); // Caché por 10 minutos
 
 export default router;
