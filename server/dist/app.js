@@ -28,6 +28,11 @@ app.use((0, cors_1.default)({
 if (config_1.config.nodeEnv !== 'test') {
     app.use((0, morgan_1.default)('dev'));
 }
+
+//ruta de prueba
+app.get('/test', (req, res) => {
+    res.send('¡Prueba exitosa!');
+});
 // Ruta raíz para comprobar el estado de la API
 app.get('/', (req, res) => {
     res.json({
