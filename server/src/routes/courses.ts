@@ -20,7 +20,12 @@ const router = Router();
 //router.get('/',cors(), cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
 
 //cors de prueba
-router.get('/', cors({ origin: '*' }), cacheResponse(300), asyncHandler(getCourses));
+router.get('/', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  next();
+}, cacheResponse(300), asyncHandler(getCourses));
 
 /*añadiendo nueva ruta
 router.get('/', (req, res) => {
