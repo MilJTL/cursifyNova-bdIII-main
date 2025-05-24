@@ -20,7 +20,7 @@ export const config = {
     redisUrl: process.env.REDIS_URL ||'redis://localhost:6379',  // Default local
     
     // Configuración de CORS
-    clientUrl: process.env.CLIENT_URL ,
+    clientUrl: process.env.CLIENT_URL|| 'http://localhost:3000' ,
     
     // Subida de archivos
     maxFileSize: process.env.MAX_FILE_SIZE || 10 * 1024 * 1024, // 10MB por defecto
