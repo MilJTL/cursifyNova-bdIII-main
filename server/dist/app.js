@@ -1,4 +1,4 @@
-"use strict";
+/*"use strict";
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -54,4 +54,26 @@ app.use((req, res) => {
         message: 'Ruta no encontrada'
     });
 });
-exports.default = app;
+exports.default = app;*/
+
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/test', (req, res) => {
+  res.send('¡Prueba exitosa simplificada!');
+});
+
+app.get('/api/courses', (req, res) => {
+  res.json({ message: '¡Ruta de cursos simplificada!' });
+});
+
+app.get('/', (req, res) => {
+  res.send('¡Hola desde el backend simplificado!');
+});
+
+app.listen(port, () => {
+  console.log(`Servidor simplificado escuchando en el puerto ${port}`);
+});
+
+module.exports = app;
