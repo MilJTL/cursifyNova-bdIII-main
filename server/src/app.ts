@@ -26,7 +26,10 @@ app.use(helmet());
 */
 // Configuración de CORS
 app.use(cors({
-    origin: config.clientUrl,
+    origin: (origin, callback) => {
+    // Permitir todas las solicitudes sin importar el origen
+    callback(null, true);
+  },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
