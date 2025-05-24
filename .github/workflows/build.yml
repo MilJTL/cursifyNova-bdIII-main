@@ -21,9 +21,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+        working-directory: ./server
 
       - name: Build project (TypeScript → JavaScript)
         run: npm run build
+        working-directory: ./server
 
       - name: Upload dist/ as artifact (opcional)
         uses: actions/upload-artifact@v4
