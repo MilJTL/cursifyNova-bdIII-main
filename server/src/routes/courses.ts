@@ -26,7 +26,6 @@ router.get('/', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   next();
 }, cacheResponse(300), asyncHandler(getCourses));
-
 /*añadiendo nueva ruta
 router.get('/', (req, res) => {
     res.status(200).json({ message: '¡Ruta de cursos funciona!' });
