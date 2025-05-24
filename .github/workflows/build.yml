@@ -28,7 +28,7 @@ jobs:
         working-directory: ./server
 
       - name: Upload dist/ as artifact (opcional)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: dist-folder
           path: dist/
