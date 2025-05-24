@@ -17,7 +17,11 @@ import { cacheResponse, clearCache } from '../middlewares/cacheMiddleware';
 const router = Router();
 
 // Rutas públicas con caché
-router.get('/',cors(), cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
+//router.get('/',cors(), cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
+
+//cors de prueba
+router.get('/', cors({ origin: '*' }), cacheResponse(300), asyncHandler(getCourses));
+
 /*añadiendo nueva ruta
 router.get('/', (req, res) => {
     res.status(200).json({ message: '¡Ruta de cursos funciona!' });
@@ -31,9 +35,9 @@ router.post('/', authenticate, clearCache('api:/api/courses*'), asyncHandler(cre
 router.post('/:id/enroll', authenticate, clearCache(`api:/api/courses*`), asyncHandler(enrollCourse));
 
 //agregando ruta de prueba
-router.get('/', (req, res) => {
+/*router.get('/', (req, res) => {
   res.status(200).json({ message: '¡Prueba de ruta de cursos en Railway!' });
-});
+});*/
 
 
 router.put('/:id', authenticate, clearCache(`api:/api/courses*`), asyncHandler(updateCourse));
