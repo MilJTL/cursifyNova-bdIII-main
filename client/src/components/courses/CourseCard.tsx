@@ -82,11 +82,11 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
                     <div className="flex items-center">
                         <img
                             src={course.autor?.avatarUrl || 'https://via.placeholder.com/30x30'}
-                            alt={course.autor.nombre}
+                            alt={course.autor?.nombre}
                             className="w-6 h-6 rounded-full mr-2"
                         />
                         <span className="text-sm text-gray-700">
-                            {course.autor.nombre}
+                            {course.autor?.nombre}
                         </span>
                     </div>
 
