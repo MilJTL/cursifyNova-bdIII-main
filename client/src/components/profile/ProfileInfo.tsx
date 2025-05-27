@@ -81,7 +81,7 @@ const ProfileInfo: React.FC<ProfileInfoProps> = ({ user, onUpdate, onAvatarUploa
                             className="w-24 h-24 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-semibold cursor-pointer"
                             onClick={handleAvatarClick}
                         >
-                            {user.nombre ? user.nombre.charAt(0).toUpperCase() : "U"}
+                            {user?.nombre ? user.nombre.charAt(0).toUpperCase() : "U"}
                         </div>
                     )}
                     
