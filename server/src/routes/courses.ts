@@ -17,15 +17,8 @@ import { cacheResponse, clearCache } from '../middlewares/cacheMiddleware';
 const router = Router();
 
 // Rutas públicas con caché
-//router.get('/',cors(), cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
+router.get('/',cors(), cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
 
-//cors de prueba
-router.get('/', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', 'https://cursify-nova-bd-iii-main-kxceqrkg3-miltons-projects-6aa104f3.vercel.app');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  next();
-}, cacheResponse(300), asyncHandler(getCourses));
 /*añadiendo nueva ruta
 router.get('/', (req, res) => {
     res.status(200).json({ message: '¡Ruta de cursos funciona!' });
