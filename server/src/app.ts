@@ -16,14 +16,6 @@ app.use(express.urlencoded({ extended: true }));
 // Middleware de seguridad
 app.use(helmet());
 
-//origenes permitidos
-/*const allowedOrigins = [
-  'https://cursify-nova-bd-iii-main.vercel.app',
-  'https://cursify-nova-bd-iii-main-git-main-miltons-projects-6aa104f3.vercel.app',
-  'https://cursify-nova-bd-iii-main-bkzqk1boq-miltons-projects-6aa104f3.vercel.app',
-  // ... otros orígenes permitidos ...
-];
-*/
 // Configuración de CORS
 app.use('/api',cors({
     origin: (origin, callback) => {
