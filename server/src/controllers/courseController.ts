@@ -47,29 +47,16 @@ export const getCourses = async (req: Request, res: Response) => {
             .limit(limitNum);
 
 
-        const cursosConId = cursos.map(curso => ({
-            ...curso.toObject(),
-            _id: curso._id.toString(),
-        }));
-
-        console.log("Array cursosConId antes de la respuesta:", cursosConId); // <---- AGREGAR ESTA LÍNEA
         // Obtener el total de documentos para la paginación
         const total = await Course.countDocuments(query);
 
         res.status(200).json({
             success: true,
-            count: cursosConId.length,
-            total,
-            pages: Math.ceil(total / limitNum),
-            currentPage: pageNum,
-            data: cursosConId
-       /* res.status(200).json({
-            success: true,
             count: cursos.length,
             total,
             pages: Math.ceil(total / limitNum),
             currentPage: pageNum,
-            data: cursos*/
+            data: cursos
         });
     } catch (error: any) {
         res.status(500).json({
