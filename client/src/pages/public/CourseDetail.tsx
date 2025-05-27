@@ -44,6 +44,7 @@ const CourseDetail: React.FC = () => {
 
     useEffect(() => {
         const fetchCourse = async () => {
+            console.log("Course ID:", id); // Agrega esta línea
             if (!id) return;
 
             try {
