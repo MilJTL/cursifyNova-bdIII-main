@@ -46,6 +46,9 @@ export const getCourses = async (req: Request, res: Response) => {
             .skip(skip)
             .limit(limitNum);
 
+    console.log("Primer curso recuperado del backend:", cursos[0]); // <---- AGREGAR ESTA LÍNEA
+
+        
         // Obtener el total de documentos para la paginación
         const total = await Course.countDocuments(query);
 
