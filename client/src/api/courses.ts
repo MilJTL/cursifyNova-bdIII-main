@@ -85,7 +85,7 @@ export const getCourses = async (filters: CoursesFilter = {}): Promise<Course[]>
     if (filters.limit) params.append('limit', filters.limit.toString());
 
     try {
-        const response = await apiClient.get<CoursesResponse>(`/api/courses?${params.toString()}`);
+        const response = await apiClient.get<CoursesResponse>(`/courses?${params.toString()}`);
         return response.data.data || [];
     } catch (error) {
         console.error('Error al obtener cursos:', error);
