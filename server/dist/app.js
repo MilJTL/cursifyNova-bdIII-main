@@ -19,7 +19,9 @@ app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, helmet_1.default)());
 // Configuración de CORS
 app.use((0, cors_1.default)({
-    origin: 'https://cursify-nova-bd-iii-main-m1yfxzrh5-miltons-projects-6aa104f3.vercel.app',
+    origin: (origin, callback) => {
+        callback(null, true); // Permitir todos los orígenes
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
