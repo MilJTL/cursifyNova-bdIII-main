@@ -59,11 +59,18 @@ console.log("Primer documento Mongoose:", cursos[0]); // <---- AGREGAR ESTA LÍN
 
         res.status(200).json({
             success: true,
+            count: cursosConId.length,
+            total,
+            pages: Math.ceil(total / limitNum),
+            currentPage: pageNum,
+            data: cursosConId
+       /* res.status(200).json({
+            success: true,
             count: cursos.length,
             total,
             pages: Math.ceil(total / limitNum),
             currentPage: pageNum,
-            data: cursos
+            data: cursos*/
         });
     } catch (error: any) {
         res.status(500).json({
