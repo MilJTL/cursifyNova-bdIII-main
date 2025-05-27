@@ -45,7 +45,11 @@ export const getCourses = async (req: Request, res: Response) => {
             .sort({ fechaCreacion: -1 })
             .skip(skip)
             .limit(limitNum);
-            .lean();
+        
+        const cursosConId = cursos.map(curso => ({
+            ...curso.toObject(),
+            _id: curso._id.toString(),
+        }));
 
     console.log("Primer curso recuperado del backend:", cursos[0]); // <---- AGREGAR ESTA LÍNEA
 
