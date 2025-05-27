@@ -21,6 +21,7 @@ interface CourseCardProps {
 }
 
 const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
+    console.log("Course ID en CourseCard:", course._id); 
     // Función para determinar el color del badge de nivel
     const getNivelBadgeClass = () => {
         switch (course.nivel) {
