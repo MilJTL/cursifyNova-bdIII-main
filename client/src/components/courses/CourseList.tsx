@@ -43,6 +43,7 @@ const CourseList: React.FC<CourseListProps> = ({ courses, loading }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {courses.map((course) => (
+                console.log("Course object in CourseList:", course); // Agrega esta línea
                 <CourseCard key={course._id} course={{ ...course, duracionEstimada: course.duracionEstimada || '' }} />
             ))}
         </div>
