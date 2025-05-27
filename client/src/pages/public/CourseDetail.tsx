@@ -44,8 +44,13 @@ const CourseDetail: React.FC = () => {
 
     useEffect(() => {
         const fetchCourse = async () => {
-            console.log("Course ID:", id); // Agrega esta línea
-            if (!id) return;
+            console.log("Course ID en useEffect:", id);
+            if (!id) {
+                console.error("ID del curso no encontrado.");
+                setError("No se encontró el ID del curso.");
+                setLoading(false);
+                return;
+            }
 
             try {
                 setLoading(true);
