@@ -19,7 +19,7 @@ export const checkCertificateEligibility = async (courseId: string): Promise<{ i
         console.log('Verificando elegibilidad para curso:', courseId);
         
         // Asegúrate de que esta URL coincida con tu configuración de rutas en el backend
-        const response = await apiClient.get(`/certificates/eligibility/${courseId}`);
+        const response = await apiClient.get(`/api/certificates/eligibility/${courseId}`);
         
         console.log('Respuesta de elegibilidad:', response.data);
         
@@ -70,7 +70,7 @@ export const generateCertificate = async (courseId: string): Promise<Certificate
         console.log('Generando certificado para curso:', courseId);
         
         // Asegúrate de que esta URL coincida con tu configuración de rutas
-        const response = await apiClient.post(`/certificates/generate/${courseId}`);
+        const response = await apiClient.post(`/api/certificates/generate/${courseId}`);
         
         console.log('Respuesta de generación:', response.data);
         
@@ -108,7 +108,7 @@ export const generateCertificate = async (courseId: string): Promise<Certificate
 // Obtener certificados del usuario
 export const getUserCertificates = async (): Promise<Certificate[]> => {
     try {
-        const response = await apiClient.get(`/certificates/user`);
+        const response = await apiClient.get(`/api/certificates/user`);
         return response.data;
     } catch (error) {
         console.error('Error al obtener certificados:', error);
@@ -119,7 +119,7 @@ export const getUserCertificates = async (): Promise<Certificate[]> => {
 // Descargar certificado
 export const downloadCertificate = async (certificateId: string): Promise<Blob | null> => {
     try {
-        const response = await apiClient.get(`/certificates/${certificateId}/download`, {
+        const response = await apiClient.get(`/api/certificates/${certificateId}/download`, {
             responseType: 'blob'
         });
         return response.data;
@@ -132,7 +132,7 @@ export const downloadCertificate = async (certificateId: string): Promise<Blob |
 // Verificar certificado (ruta pública)
 export const verifyCertificate = async (verificationCode: string): Promise<Certificate | null> => {
     try {
-        const response = await apiClient.get(`/certificates/verify/${verificationCode}`);
+        const response = await apiClient.get(`/api/certificates/verify/${verificationCode}`);
         return response.data;
     } catch (error) {
         console.error('Error al verificar certificado:', error);
