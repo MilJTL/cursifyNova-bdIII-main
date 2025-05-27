@@ -17,7 +17,7 @@ import { cacheResponse, clearCache } from '../middlewares/cacheMiddleware';
 const router = Router();
 
 // Rutas públicas con caché
-router.get('/', cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
+//router.get('/', cacheResponse(300), asyncHandler(getCourses)); // Caché por 5 minutos
 
 // Rutas protegidas - Específicas primero
 router.get('/instructor', authenticate, cacheResponse(120), asyncHandler(getInstructorCourses)); // Caché por 2 minutos
