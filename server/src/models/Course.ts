@@ -2,12 +2,12 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 // Interfaz para Course
 export interface ICourse extends Document {
-    _id: string;
+    _id: string; // <--- ¡CRÍTICO! DEBE SER 'string'
     titulo: string;
     descripcion: string;
     premium: boolean;
     autor: mongoose.Types.ObjectId;
-    modulos: mongoose.Types.ObjectId[]; // Ahora es un array de referencias
+    modulos: mongoose.Types.ObjectId[];
     etiquetas: string[];
     fechaCreacion: Date;
     fechaActualizacion: Date;
@@ -21,10 +21,10 @@ export interface ICourse extends Document {
 
 // Esquema principal del curso
 const courseSchema = new Schema<ICourse>({
-     _id: { // <--- ¡IMPORTANTE! Definir _id explícitamente como String
+    _id: { // <--- ¡CRÍTICO! Definir _id explícitamente como String
         type: String,
         required: true,
-        unique: true // Asegura que los IDs sean únicos
+        unique: true
     },
     titulo: {
         type: String,
@@ -93,18 +93,17 @@ const courseSchema = new Schema<ICourse>({
         createdAt: 'fechaCreacion',
         updatedAt: 'fechaActualizacion'
     },
-    // Habilitar toJSON y toObject para incluir virtuales y transformaciones
-    id: true, // Esto asegura que se genere una propiedad 'id' virtual a partir de '_id'
+    id: true,
     toJSON: {
-        virtuals: true, // Incluir virtuales (como 'id')
+        virtuals: true,
         transform: function (doc, ret) {
-            ret.id = ret._id; // _id ya es un string, lo asignamos a id
-            delete ret._id; // Eliminar el _id original
-            delete ret.__v; // Eliminar __v
+            ret.id = ret._id;
+            delete ret._id;
+            delete ret.__v;
         }
     },
     toObject: {
-        virtuals: true, // Incluir virtuales
+        virtuals: true,
         transform: function (doc, ret) {
             ret.id = ret._id;
             delete ret._id;
@@ -112,6 +111,9 @@ const courseSchema = new Schema<ICourse>({
         }
     }
 });
+
+// <--- ¡NUEVO LOG DE VERIFICACIÓN!
+console.log('📦 Course Model Loaded: _id type is', courseSchema.paths._id.instance);
 
 // Crear índices para búsqueda
 courseSchema.index({ titulo: 'text', descripcion: 'text' });
