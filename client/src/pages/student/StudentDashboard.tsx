@@ -7,7 +7,7 @@ import CourseCard from '../../components/courses/CourseCard';
 
 interface CourseWithProgress extends Course {
     progress?: number;
-    lastAccessed?: Date;
+    lastAccessed?: Date; // Si viene como Date, si no, string
 }
 
 const StudentDashboard: React.FC = () => {
@@ -23,6 +23,7 @@ const StudentDashboard: React.FC = () => {
                 setIsLoading(true);
 
                 // Obtener cursos en los que está inscrito el estudiante
+                // Asumiendo que getCourses({ enrolled: true }) devuelve cursos con 'id'
                 const enrolledCoursesData = await getCourses({ enrolled: true });
 
                 // Obtener progreso para cada curso
@@ -30,23 +31,26 @@ const StudentDashboard: React.FC = () => {
 
                 for (const course of enrolledCoursesData) {
                     try {
-                        const progressData = await getStudentProgress(course._id);
+                        // <--- ¡AQUÍ LA CORRECCIÓN! Usar course.id
+                        const progressData = await getStudentProgress(course.id); 
                         coursesWithProgress.push({
                             ...course,
                             progress: progressData.progressPercentage,
                             lastAccessed: progressData.lastAccessed ? new Date(progressData.lastAccessed) : undefined
                         });
                     } catch (err) {
-                        console.error(`Error obteniendo progreso para el curso ${course._id}:`, err);
-                        coursesWithProgress.push(course);
+                        // Log más detallado del error
+                        console.error(`Error obteniendo progreso para el curso ${course.id}:`, err);
+                        coursesWithProgress.push(course); // Añadir el curso incluso si el progreso falla
                     }
                 }
 
                 // Ordenar por último acceso (más reciente primero)
                 coursesWithProgress.sort((a, b) => {
-                    if (!a.lastAccessed) return 1;
-                    if (!b.lastAccessed) return -1;
-                    return b.lastAccessed.getTime() - a.lastAccessed.getTime();
+                    // Asegurarse de que lastAccessed sea un objeto Date antes de llamar a getTime()
+                    const aTime = a.lastAccessed instanceof Date ? a.lastAccessed.getTime() : 0;
+                    const bTime = b.lastAccessed instanceof Date ? b.lastAccessed.getTime() : 0;
+                    return bTime - aTime;
                 });
 
                 setEnrolledCourses(coursesWithProgress);
@@ -127,8 +131,10 @@ const StudentDashboard: React.FC = () => {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {enrolledCourses.map(course => (
-                                    <div key={course._id} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
-                                        <Link to={`/student/courses/${course._id}`}>
+                                    // <--- ¡AQUÍ LA CORRECCIÓN! Usar course.id
+                                    <div key={course.id} className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
+                                        {/* <--- ¡AQUÍ LA CORRECCIÓN! Usar course.id */}
+                                        <Link to={`/student/courses/${course.id}`}>
                                             <div className="h-40 bg-gray-300 relative">
                                                 {course.imagenCurso ? (
                                                     <img
@@ -194,7 +200,8 @@ const StudentDashboard: React.FC = () => {
                             <h2 className="text-2xl font-bold mb-6">Recomendado para ti</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {recommendedCourses.map(course => (
-                                    <CourseCard key={course._id} course={{ ...course, duracionEstimada: course.duracionEstimada || 'No especificado' }} />
+                                    // <--- ¡AQUÍ LA CORRECCIÓN! Usar course.id
+                                    <CourseCard key={course.id} course={{ ...course, duracionEstimada: course.duracionEstimada || 'No especificado' }} />
                                 ))}
                             </div>
                         </div>
