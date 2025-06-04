@@ -20,7 +20,6 @@ declare global {
 }
 
 
-// Obtener todos los cursos
 export const getCourses = async (req: Request, res: Response) => {
     try {
         const { etiquetas, nivel, premium, busqueda, page = 1, limit = 10, enrolled, recommended } = req.query;
@@ -33,19 +32,22 @@ export const getCourses = async (req: Request, res: Response) => {
             query.etiquetas = { $in: Array.isArray(etiquetas) ? etiquetas : [etiquetas] };
         }
         if (nivel) query.nivel = nivel;
-        if (premium !== undefined) query.premium = premium === 'true';
+        if (premium !== undefined) query.premium = premium === 'true'; 
         if (busqueda) {
             query.$text = { $search: busqueda.toString() };
         }
 
-        // Filtro para cursos inscritos (solo si el usuario está autenticado y se solicita 'enrolled')
-        if (enrolled === 'true' && userId) {
+        // Filtro para cursos inscritos
+        if (enrolled === 'true') {
+            if (!userId) {
+                console.warn('⚠️ getCourses: Solicitud de cursos inscritos sin usuario autenticado.');
+                return res.status(401).json({ success: false, message: 'No autorizado para ver cursos inscritos sin iniciar sesión.' });
+            }
             const user = await User.findById(userId).select('cursosInscritos');
-            if (user && user.cursosInscritos) {
-                // Mongoose ObjectId[] a string[] para la consulta si los IDs de curso son string
-                query._id = { $in: user.cursosInscritos.map(id => id.toString()) }; 
+            if (user && user.cursosInscritos && user.cursosInscritos.length > 0) {
+                query._id = { $in: user.cursosInscritos.map(id => id.toString()) };
             } else {
-                // Si no hay usuario o cursos inscritos, no devolver nada para esta consulta
+                console.log('ℹ️ getCourses: Usuario autenticado pero sin cursos inscritos.');
                 return res.status(200).json({
                     success: true,
                     count: 0,
@@ -55,22 +57,19 @@ export const getCourses = async (req: Request, res: Response) => {
                     data: []
                 });
             }
-        } else if (enrolled === 'true' && !userId) {
-            // Si se pide "enrolled" pero no hay usuario, devolver 401
-            return res.status(401).json({ success: false, message: 'No autorizado para ver cursos inscritos sin iniciar sesión.' });
         }
 
-        // Filtro para cursos recomendados (puedes implementar tu lógica de recomendación aquí)
+        // Filtro para cursos recomendados (si tienes lógica específica)
         if (recommended === 'true') {
-            // Lógica de recomendación de ejemplo: cursos con alta valoración o los más recientes
-            // Por ahora, simplemente no aplicamos un filtro restrictivo adicional si no hay lógica compleja
-            // Esto podría ser más elaborado, por ejemplo, excluyendo cursos ya inscritos si userId está presente
+            // Implementa aquí tu lógica de recomendación si es diferente a la búsqueda general
+            // Por ejemplo, buscar cursos con alta valoración o los más recientes, excluyendo los ya inscritos
         }
-
 
         const pageNum = parseInt(page.toString(), 10);
         const limitNum = parseInt(limit.toString(), 10);
         const skip = (pageNum - 1) * limitNum;
+
+        console.log('🔍 getCourses: Consulta final a MongoDB:', JSON.stringify(query)); // Log de la consulta
 
         const cursos = await Course.find(query)
             .populate('autor', 'nombre username avatarUrl')
@@ -80,11 +79,9 @@ export const getCourses = async (req: Request, res: Response) => {
 
         const total = await Course.countDocuments(query);
 
-        // Asegurarse de que la transformación toJSON se aplique a cada documento
-        // Mongoose lo hace automáticamente al enviar la respuesta, pero si quieres
-        // manipular los datos antes, puedes mapearlos explícitamente.
-        // Para consistencia, podemos mapear a un objeto plano que ya tendrá 'id'.
         const formattedCourses = cursos.map(course => course.toObject());
+
+        console.log(`✅ getCourses: Encontrados ${formattedCourses.length} cursos. Total: ${total}`); // Log de resultados
 
         res.status(200).json({
             success: true,
@@ -92,29 +89,32 @@ export const getCourses = async (req: Request, res: Response) => {
             total,
             pages: Math.ceil(total / limitNum),
             currentPage: pageNum,
-            data: formattedCourses // Envía los documentos transformados
+            data: formattedCourses
         });
     } catch (error: any) {
-        console.error('❌ Error en getCourses:', error);
+        // <--- ¡IMPORTANTE! Log detallado del error
+        console.error('❌ Error en getCourses (catch):', error.message, error.stack);
         res.status(500).json({
             success: false,
             message: error.message || 'Error al obtener cursos'
         });
     }
 };
-// Obtener curso por ID
+
+// @desc    Obtener un curso por ID
+// @route   GET /api/courses/:id
+// @access  Public (o Private si solo usuarios inscritos pueden verlo)
 export const getCourseById = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params; // El ID del curso viene de los parámetros de la URL
+        const { id } = req.params;
 
-        // <--- ¡IMPORTANTE! Validar si el ID es válido o existe
-        if (!id || typeof id !== 'string') { // Asegurarse de que no sea undefined o no sea string
-            console.error('❌ Error en getCourseById: ID de curso no proporcionado o inválido:', id);
+        if (!id || typeof id !== 'string') {
+            console.error('❌ getCourseById: ID de curso no proporcionado o inválido:', id);
             return res.status(400).json({ success: false, message: 'ID de curso no proporcionado o inválido.' });
         }
 
-        // Buscar el curso por su ID.
-        // El campo '_id' en tu modelo Course.ts ya está definido como String, lo cual es correcto.
+        console.log('🔍 getCourseById: Buscando curso con ID:', id); // Log de la búsqueda
+
         const course = await Course.findById(id)
             .populate({
                 path: 'modulos',
@@ -122,21 +122,21 @@ export const getCourseById = async (req: Request, res: Response) => {
                     path: 'lecciones'
                 }
             })
-            .populate('autor', 'nombre avatarUrl'); // Popula la información del autor
+            .populate('autor', 'nombre avatarUrl');
 
         if (!course) {
-            console.warn('⚠️ Curso no encontrado para el ID:', id);
+            console.warn('⚠️ getCourseById: Curso no encontrado para el ID:', id);
             return res.status(404).json({ success: false, message: 'Curso no encontrado.' });
         }
+
+        console.log('✅ getCourseById: Curso encontrado:', course.titulo); // Log de éxito
 
         res.status(200).json({ success: true, data: course });
 
     } catch (error: any) {
-        // <--- ¡IMPORTANTE! Loguear el error completo aquí
-        console.error('❌ Error en getCourseById (catch):', error);
+        // <--- ¡IMPORTANTE! Log detallado del error
+        console.error('❌ Error en getCourseById (catch):', error.message, error.stack);
 
-        // Si el error es un CastError (por ejemplo, ID inválido para ObjectId), devolver 400
-        // Esto es menos probable ahora que _id en Course es String, pero es buena práctica
         if (error.name === 'CastError') {
             return res.status(400).json({ success: false, message: `ID de curso inválido: ${error.value}` });
         }
