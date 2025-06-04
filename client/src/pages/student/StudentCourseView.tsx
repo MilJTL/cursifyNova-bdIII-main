@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getCourseById, getCourseProgress, type Course } from '../../api/courses';
 import { getModulesByCourse, type Module } from '../../api/modules';
 import { getLessonsByModule, markLessonCompleted, type Lesson } from '../../api/lessons';
-//import { updateLessonProgress } from '../../api/progress';
+//import { updateLessonProgress } from '../../api/progress'; // Si no se usa, se puede eliminar
 import {
     getCommentsByLesson,
     createComment,
@@ -38,7 +38,8 @@ const StudentCourseView: React.FC = () => {
     const [completedLessons, setCompletedLessons] = useState<string[]>([]);
     const [activeModuleId, setActiveModuleId] = useState<string>('');
     const [activeLessonId, setActiveLessonId] = useState<string>('');
-    const [setCertificateEligible] = useState<boolean>(false);
+    // <--- ¡CORRECCIÓN CLAVE AQUÍ!
+    const [certificateEligible, setCertificateEligible] = useState<boolean>(false); 
 
     // Estados para comentarios
     const [comments, setComments] = useState<Comment[]>([]);
@@ -63,12 +64,12 @@ const StudentCourseView: React.FC = () => {
     // Función para calcular el progreso para el certificado
     const calculateCertificateProgress = (completedLessonIds: string[], allLessons: Lesson[]) => {
         const totalLessons = allLessons.length;
-        const completedLessons = completedLessonIds.length;
-        const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+        const completedLessonsCount = completedLessonIds.length; // Renombrado para evitar conflicto con el estado
+        const progress = totalLessons > 0 ? Math.round((completedLessonsCount / totalLessons) * 100) : 0;
 
         setCertificateProgress({
             progress,
-            completedLessons,
+            completedLessons: completedLessonsCount,
             totalLessons
         });
 
@@ -93,50 +94,41 @@ const StudentCourseView: React.FC = () => {
                 }
                 setCourse(courseData);
 
-                // Obtener el progreso del estudiante (esto faltaba)
-                // Usar la función getCourseProgress
+                // Obtener el progreso del estudiante
                 const progressData = await getCourseProgress(courseId);
+                // Asegúrate de que progressData.completedLessons sea un array de strings
                 setCompletedLessons(progressData?.completedLessons || []);
 
                 // Obtener módulos del curso
                 const modulesData = await getModulesByCourse(courseId);
                 setModules(modulesData);
 
-                // Establecer módulo activo inicial (primer módulo)
+                const allLessons: Lesson[] = []; // Para calcular el progreso total
+
+                // Cargar lecciones para todos los módulos y recopilarlas
+                const lessonsByModuleMap: Record<string, Lesson[]> = {};
+                for (const module of modulesData) {
+                    // <--- CORRECCIÓN CLAVE: Usar module.id
+                    const moduleLessons = await getLessonsByModule(module.id); 
+                    lessonsByModuleMap[module.id] = moduleLessons; // <--- Usar module.id como clave
+                    allLessons.push(...moduleLessons);
+                }
+                setLessons(lessonsByModuleMap);
+
+                // Establecer módulo y lección activa inicial
                 if (modulesData.length > 0) {
-                    const firstModuleId = modulesData[0]._id;
+                    const firstModuleId = modulesData[0].id; // <--- CORRECCIÓN: Usar .id
                     setActiveModuleId(firstModuleId);
 
-                    // Obtener lecciones del primer módulo
-                    const lessonsData = await getLessonsByModule(firstModuleId);
-
-                    // Guardar lecciones por módulo
-                    setLessons(prev => ({
-                        ...prev,
-                        [firstModuleId]: lessonsData
-                    }));
-
-                    if (lessonsData.length > 0) {
-                        // Establecer primera lección como activa
-                        setActiveLessonId(lessonsData[0]._id);
-                        setCurrentLesson(lessonsData[0]);
+                    const firstModuleLessons = lessonsByModuleMap[firstModuleId];
+                    if (firstModuleLessons && firstModuleLessons.length > 0) {
+                        const firstLesson = firstModuleLessons[0];
+                        setActiveLessonId(firstLesson.id); // <--- CORRECCIÓN: Usar .id
+                        setCurrentLesson(firstLesson);
 
                         // Cargar comentarios de la primera lección
-                        fetchComments(lessonsData[0]._id);
+                        fetchComments(firstLesson.id); // <--- CORRECCIÓN: Usar .id
                     }
-                }
-
-                // Verificar si el estudiante es elegible para un certificado
-                checkCertificateStatus(courseId);
-
-                // Para calcular el progreso, primero reunimos todas las lecciones
-                // Aquí estabas usando lessonsByModule que no existía
-                const allLessons: Lesson[] = [];
-
-                // Primero cargar todas las lecciones de todos los módulos
-                for (const module of modulesData) {
-                    const moduleLessons = await getLessonsByModule(module._id);
-                    allLessons.push(...moduleLessons);
                 }
 
                 // Calcular el progreso para el certificado con las lecciones recopiladas
@@ -152,11 +144,7 @@ const StudentCourseView: React.FC = () => {
         };
 
         fetchCourseData();
-    }, [courseId]);
-
-
-
-    // Sección para mostrar junto al botón de certificado
+    }, [courseId]); // Dependencia courseId para que se ejecute cuando cambie el curso
 
     // Modificar checkCertificateStatus para guardar la información de progreso
     const checkCertificateStatus = async (courseId: string) => {
@@ -193,19 +181,19 @@ const StudentCourseView: React.FC = () => {
         if (!url) return '';
 
         // Si la URL ya está en formato de embed, usarla directamente
-        if (url.includes('youtube.com/embed/')) {
+        // Esta condición puede ser demasiado específica, considera ajustarla
+        if (url.includes('youtube.com/embed/')) { 
             return url;
         }
 
         try {
-            // Extraer el ID del video
+            // Expresión regular más robusta para extraer el ID de YouTube
             let videoId = '';
-
-            if (url.includes('youtube.com/watch')) {
-                const urlObj = new URL(url);
-                videoId = urlObj.searchParams.get('v') || '';
-            } else if (url.includes('youtu.be/')) {
-                videoId = url.split('youtu.be/')[1]?.split('?')[0] || '';
+            const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=|embed\/|v\/|)([\w-]{11})(?:\S+)?/i;
+            const match = url.match(youtubeRegex);
+            
+            if (match && match[1]) {
+                videoId = match[1];
             } else {
                 // Si parece ser solo un ID de video, usarlo directamente
                 const possibleId = url.trim();
@@ -222,8 +210,8 @@ const StudentCourseView: React.FC = () => {
             console.error('Error al procesar URL de YouTube:', error, url);
         }
 
-        // En caso de error, intentar usar la URL directa como embed
-        return `https://www.youtube.com/embed/${url.replace(/[^a-zA-Z0-9_-]/g, '')}`;
+        // En caso de error o URL no reconocida, devolver una URL de placeholder o vacía
+        return ''; 
     };
 
     const handleLessonSelect = async (moduleId: string, lessonId: string) => {
@@ -239,8 +227,9 @@ const StudentCourseView: React.FC = () => {
             }
 
             // Encontrar la lección seleccionada
-            const selectedLesson = lessons[moduleId]?.find(lesson => lesson._id === lessonId) ||
-                (await getLessonsByModule(moduleId)).find((lesson: Lesson) => lesson._id === lessonId);
+            // Usar lessons[moduleId] que ya está cargado o esperar a que se cargue si no lo estaba
+            const selectedLesson = lessons[moduleId]?.find(lesson => lesson.id === lessonId) ||
+                (await getLessonsByModule(moduleId)).find((lesson: Lesson) => lesson.id === lessonId); // <--- CORRECCIÓN: Usar .id
 
             if (selectedLesson) {
                 setCurrentLesson(selectedLesson);
@@ -265,23 +254,31 @@ const StudentCourseView: React.FC = () => {
 
         try {
             // Usar solo markLessonCompleted de lessons.ts
-            await markLessonCompleted(currentLesson._id);
+            // <--- CORRECCIÓN: Usar .id
+            await markLessonCompleted(currentLesson.id); 
 
             // Actualizar estado local
             setCompletedLessons(prev =>
-                prev.includes(currentLesson._id) ? prev : [...prev, currentLesson._id]
+                // <--- CORRECCIÓN: Usar .id
+                prev.includes(currentLesson.id) ? prev : [...prev, currentLesson.id]
             );
 
-            // Verificar si el estudiante es elegible para un certificado
+            // Recalcular el progreso del certificado
             if (courseId) {
-                checkCertificateStatus(courseId);
+                const progressData = await getCourseProgress(courseId);
+                setCompletedLessons(progressData?.completedLessons || []);
+                // Recalcular el progreso con los datos actualizados
+                const allLessons: Lesson[] = Object.values(lessons).flat(); // Obtener todas las lecciones cargadas
+                calculateCertificateProgress(progressData?.completedLessons || [], allLessons);
             }
 
-            // Mostrar mensaje de éxito
-            alert('¡Lección marcada como completada!');
+            // Mostrar mensaje de éxito (considera usar un modal o toast en lugar de alert)
+            // alert('¡Lección marcada como completada!'); 
+            console.log('¡Lección marcada como completada!');
         } catch (err) {
             console.error('Error actualizando progreso:', err);
-            alert('No se pudo marcar la lección como completada. Intenta de nuevo.');
+            // alert('No se pudo marcar la lección como completada. Intenta de nuevo.');
+            console.error('No se pudo marcar la lección como completada. Intenta de nuevo.');
         }
     };
 
@@ -295,7 +292,8 @@ const StudentCourseView: React.FC = () => {
             }
         } catch (err) {
             console.error('Error generando certificado:', err);
-            alert('No se pudo generar el certificado. Intenta de nuevo más tarde.');
+            // alert('No se pudo generar el certificado. Intenta de nuevo más tarde.');
+            console.error('No se pudo generar el certificado. Intenta de nuevo más tarde.');
         }
     };
 
@@ -307,7 +305,8 @@ const StudentCourseView: React.FC = () => {
         let nextLesson = null;
 
         // Encontrar el índice del módulo actual
-        const currentModuleIndex = modules.findIndex(m => m._id === activeModuleId);
+        // <--- CORRECCIÓN: Usar .id
+        const currentModuleIndex = modules.findIndex(m => m.id === activeModuleId); 
         if (currentModuleIndex === -1) return { prevLesson: null, nextLesson: null };
 
         // Obtener lecciones del módulo actual
@@ -315,25 +314,26 @@ const StudentCourseView: React.FC = () => {
         if (!currentModuleLessons.length) return { prevLesson: null, nextLesson: null };
 
         // Encontrar el índice de la lección actual
-        const currentLessonIndex = currentModuleLessons.findIndex(l => l._id === activeLessonId);
+        // <--- CORRECCIÓN: Usar .id
+        const currentLessonIndex = currentModuleLessons.findIndex(l => l.id === activeLessonId); 
         if (currentLessonIndex === -1) return { prevLesson: null, nextLesson: null };
 
         // Verificar si hay una lección anterior en el mismo módulo
         if (currentLessonIndex > 0) {
             prevLesson = {
                 moduleId: activeModuleId,
-                lessonId: currentModuleLessons[currentLessonIndex - 1]._id
+                lessonId: currentModuleLessons[currentLessonIndex - 1].id // <--- CORRECCIÓN: Usar .id
             };
         }
         // Si no hay lección anterior en este módulo, buscar en el módulo anterior
         else if (currentModuleIndex > 0) {
-            const prevModuleId = modules[currentModuleIndex - 1]._id;
+            const prevModuleId = modules[currentModuleIndex - 1].id; // <--- CORRECCIÓN: Usar .id
             const prevModuleLessons = lessons[prevModuleId] || [];
 
             if (prevModuleLessons.length) {
                 prevLesson = {
                     moduleId: prevModuleId,
-                    lessonId: prevModuleLessons[prevModuleLessons.length - 1]._id
+                    lessonId: prevModuleLessons[prevModuleLessons.length - 1].id // <--- CORRECCIÓN: Usar .id
                 };
             }
         }
@@ -342,18 +342,18 @@ const StudentCourseView: React.FC = () => {
         if (currentLessonIndex < currentModuleLessons.length - 1) {
             nextLesson = {
                 moduleId: activeModuleId,
-                lessonId: currentModuleLessons[currentLessonIndex + 1]._id
+                lessonId: currentModuleLessons[currentLessonIndex + 1].id // <--- CORRECCIÓN: Usar .id
             };
         }
         // Si no hay lección siguiente en este módulo, buscar en el módulo siguiente
         else if (currentModuleIndex < modules.length - 1) {
-            const nextModuleId = modules[currentModuleIndex + 1]._id;
+            const nextModuleId = modules[currentModuleIndex + 1].id; // <--- CORRECCIÓN: Usar .id
             const nextModuleLessons = lessons[nextModuleId] || [];
 
             if (nextModuleLessons.length) {
                 nextLesson = {
                     moduleId: nextModuleId,
-                    lessonId: nextModuleLessons[0]._id
+                    lessonId: nextModuleLessons[0].id // <--- CORRECCIÓN: Usar .id
                 };
             }
         }
@@ -382,7 +382,8 @@ const StudentCourseView: React.FC = () => {
 
         try {
             const commentData: NewComment = { contenido: newComment.trim() };
-            const createdComment = await createComment(currentLesson._id, commentData);
+            // <--- CORRECCIÓN: Usar .id
+            const createdComment = await createComment(currentLesson.id, commentData); 
 
             if (createdComment) {
                 setComments([createdComment, ...comments]);
@@ -390,7 +391,8 @@ const StudentCourseView: React.FC = () => {
             }
         } catch (error) {
             console.error('Error al crear comentario:', error);
-            alert('No se pudo publicar el comentario. Intenta de nuevo.');
+            // alert('No se pudo publicar el comentario. Intenta de nuevo.');
+            console.error('No se pudo publicar el comentario. Intenta de nuevo.');
         }
     };
 
@@ -402,13 +404,14 @@ const StudentCourseView: React.FC = () => {
             const updatedComment = await addReply(commentId, replyData);
 
             if (updatedComment) {
-                setComments(comments.map(c => c._id === commentId ? updatedComment : c));
+                setComments(comments.map(c => c.id === commentId ? updatedComment : c)); // <--- CORRECCIÓN: Usar .id
                 setReplyingTo(null);
                 setReplyContent('');
             }
         } catch (error) {
             console.error('Error al añadir respuesta:', error);
-            alert('No se pudo publicar la respuesta. Intenta de nuevo.');
+            // alert('No se pudo publicar la respuesta. Intenta de nuevo.');
+            console.error('No se pudo publicar la respuesta. Intenta de nuevo.');
         }
     };
 
@@ -420,13 +423,14 @@ const StudentCourseView: React.FC = () => {
             const updatedComment = await updateComment(commentId, commentData);
 
             if (updatedComment) {
-                setComments(comments.map(c => c._id === commentId ? updatedComment : c));
+                setComments(comments.map(c => c.id === commentId ? updatedComment : c)); // <--- CORRECCIÓN: Usar .id
                 setEditingComment(null);
                 setEditContent('');
             }
         } catch (error) {
             console.error('Error al actualizar comentario:', error);
-            alert('No se pudo actualizar el comentario. Intenta de nuevo.');
+            // alert('No se pudo actualizar el comentario. Intenta de nuevo.');
+            console.error('No se pudo actualizar el comentario. Intenta de nuevo.');
         }
     };
 
@@ -438,45 +442,52 @@ const StudentCourseView: React.FC = () => {
             const updatedComment = await updateReply(commentId, replyId, replyData);
 
             if (updatedComment) {
-                setComments(comments.map(c => c._id === commentId ? updatedComment : c));
+                // Usar type guard mejorado
+                setComments(comments.map(c =>
+                    c.id === commentId ? updatedComment as Comment : c // <--- CORRECCIÓN: Usar .id
+                ));
                 setEditingReply(null);
                 setEditContent('');
             }
         } catch (error) {
             console.error('Error al actualizar respuesta:', error);
-            alert('No se pudo actualizar la respuesta. Intenta de nuevo.');
+            // alert('No se pudo actualizar la respuesta. Intenta de nuevo.');
+            console.error('No se pudo actualizar la respuesta. Intenta de nuevo.');
         }
     };
 
     const handleDeleteComment = async (commentId: string) => {
-        if (!window.confirm('¿Estás seguro de que deseas eliminar este comentario?')) return;
+        // Reemplazar alert con un modal o confirmación personalizada
+        if (!window.confirm('¿Estás seguro de que deseas eliminar este comentario?')) return; 
 
         try {
             const success = await deleteComment(commentId);
             if (success) {
-                setComments(comments.filter(c => c._id !== commentId));
+                setComments(comments.filter(c => c.id !== commentId)); // <--- CORRECCIÓN: Usar .id
             }
         } catch (error) {
             console.error('Error al eliminar comentario:', error);
-            alert('No se pudo eliminar el comentario. Intenta de nuevo.');
+            // alert('No se pudo eliminar el comentario. Intenta de nuevo.');
+            console.error('No se pudo eliminar el comentario. Intenta de nuevo.');
         }
     };
 
     const handleDeleteReply = async (commentId: string, replyId: string) => {
-        if (!window.confirm('¿Estás seguro de que deseas eliminar esta respuesta?')) return;
+        // Reemplazar alert con un modal o confirmación personalizada
+        if (!window.confirm('¿Estás seguro de que deseas eliminar esta respuesta?')) return; 
 
         try {
             const updatedComment = await deleteReply(commentId, replyId);
 
             if (updatedComment) {
-                // Usar type guard mejorado
                 setComments(comments.map(c =>
-                    c._id === commentId ? updatedComment as Comment : c
+                    c.id === commentId ? updatedComment as Comment : c // <--- CORRECCIÓN: Usar .id
                 ));
             }
         } catch (error) {
             console.error('Error al eliminar respuesta:', error);
-            alert('No se pudo eliminar la respuesta. Intenta de nuevo.');
+            // alert('No se pudo eliminar la respuesta. Intenta de nuevo.');
+            console.error('No se pudo eliminar la respuesta. Intenta de nuevo.');
         }
     };
 
@@ -545,8 +556,8 @@ const StudentCourseView: React.FC = () => {
                 {/* Sidebar/Contenido del curso */}
                 <aside
                     className={`bg-gray-50 border-r border-gray-200 w-80 flex-shrink-0 overflow-y-auto transition-transform duration-300 transform 
-            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
-            fixed md:static inset-y-0 left-0 z-30 md:z-0 pt-16 md:pt-0`}
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
+                fixed md:static inset-y-0 left-0 z-30 md:z-0 pt-16 md:pt-0`}
                 >
                     <div className="p-4">
                         <h2 className="text-lg font-semibold mb-4">Contenido del curso</h2>
@@ -575,7 +586,7 @@ const StudentCourseView: React.FC = () => {
                             <button
                                 onClick={handleGenerateCertificate}
                                 className={`w-full mt-2 px-4 py-2 rounded-md flex items-center justify-center
-                  ${certificateProgress && certificateProgress.progress >= 80
+                    ${certificateProgress && certificateProgress.progress >= 80
                                         ? 'bg-green-600 text-white hover:bg-green-700'
                                         : 'bg-gray-300 text-gray-700 cursor-not-allowed'}`}
                                 disabled={!certificateProgress || certificateProgress.progress < 80}
@@ -591,15 +602,16 @@ const StudentCourseView: React.FC = () => {
 
                         <div className="space-y-4">
                             {modules.map((module) => (
-                                <div key={module._id} className="border border-gray-200 rounded-md overflow-hidden">
+                                // <--- CORRECCIÓN: Usar .id
+                                <div key={module.id} className="border border-gray-200 rounded-md overflow-hidden">
                                     <div
                                         className={`px-4 py-3 font-medium flex justify-between items-center cursor-pointer
-                      ${activeModuleId === module._id ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-800'}`}
-                                        onClick={() => setActiveModuleId(prev => prev === module._id ? '' : module._id)}
+                                ${activeModuleId === module.id ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-800'}`} // <--- CORRECCIÓN: Usar .id
+                                        onClick={() => setActiveModuleId(prev => prev === module.id ? '' : module.id)} // <--- CORRECCIÓN: Usar .id
                                     >
                                         <span>{module.titulo}</span>
                                         <svg
-                                            className={`w-5 h-5 transition-transform ${activeModuleId === module._id ? 'transform rotate-180' : ''}`}
+                                            className={`w-5 h-5 transition-transform ${activeModuleId === module.id ? 'transform rotate-180' : ''}`} // <--- CORRECCIÓN: Usar .id
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -608,18 +620,18 @@ const StudentCourseView: React.FC = () => {
                                         </svg>
                                     </div>
 
-                                    {activeModuleId === module._id && (
+                                    {activeModuleId === module.id && ( // <--- CORRECCIÓN: Usar .id
                                         <div className="bg-gray-50 py-1">
-                                            {lessons[module._id]?.map((lesson) => (
+                                            {lessons[module.id]?.map((lesson) => ( // <--- CORRECCIÓN: Usar .id
                                                 <div
-                                                    key={lesson._id}
+                                                    key={lesson.id} // <--- CORRECCIÓN: Usar .id
                                                     className={`px-4 py-2 flex items-center cursor-pointer 
-                            ${activeLessonId === lesson._id ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`}
-                                                    onClick={() => handleLessonSelect(module._id, lesson._id)}
+                                        ${activeLessonId === lesson.id ? 'bg-blue-100 text-blue-700' : 'hover:bg-gray-100'}`} // <--- CORRECCIÓN: Usar .id
+                                                    onClick={() => handleLessonSelect(module.id, lesson.id)} // <--- CORRECCIÓN: Usar .id
                                                 >
                                                     {/* Indicador de completado */}
                                                     <div className="mr-2 flex-shrink-0">
-                                                        {completedLessons.includes(lesson._id) ? (
+                                                        {completedLessons.includes(lesson.id) ? ( // <--- CORRECCIÓN: Usar .id
                                                             <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                                                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                                             </svg>
@@ -742,8 +754,8 @@ const StudentCourseView: React.FC = () => {
                                                 type="submit"
                                                 disabled={!newComment.trim()}
                                                 className={`px-4 py-2 rounded-md ${!newComment.trim()
-                                                    ? 'bg-gray-300 cursor-not-allowed'
-                                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                                        ? 'bg-gray-300 cursor-not-allowed'
+                                                        : 'bg-blue-600 text-white hover:bg-blue-700'
                                                     }`}
                                             >
                                                 Publicar comentario
@@ -760,7 +772,8 @@ const StudentCourseView: React.FC = () => {
                                 ) : comments.length > 0 ? (
                                     <div className="space-y-6">
                                         {comments.map((comment) => (
-                                            <div key={comment._id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                                            // <--- CORRECCIÓN: Usar .id
+                                            <div key={comment.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                                                 {/* Cabecera del comentario */}
                                                 <div className="flex items-start p-4 border-b border-gray-100">
                                                     {/* Avatar */}
@@ -779,7 +792,7 @@ const StudentCourseView: React.FC = () => {
                                                             </div>
                                                         </div>
 
-                                                        {editingComment === comment._id ? (
+                                                        {editingComment === comment.id ? ( // <--- CORRECCIÓN: Usar .id
                                                             <div className="mt-2">
                                                                 <textarea
                                                                     value={editContent}
@@ -798,7 +811,7 @@ const StudentCourseView: React.FC = () => {
                                                                         Cancelar
                                                                     </button>
                                                                     <button
-                                                                        onClick={() => handleUpdateComment(comment._id)}
+                                                                        onClick={() => handleUpdateComment(comment.id)} // <--- CORRECCIÓN: Usar .id
                                                                         className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
                                                                     >
                                                                         Guardar
@@ -817,7 +830,7 @@ const StudentCourseView: React.FC = () => {
                                                                 <button
                                                                     className="text-gray-500 hover:text-gray-700"
                                                                     onClick={() => {
-                                                                        setEditingComment(comment._id);
+                                                                        setEditingComment(comment.id); // <--- CORRECCIÓN: Usar .id
                                                                         setEditContent(comment.contenido);
                                                                     }}
                                                                 >
@@ -827,7 +840,7 @@ const StudentCourseView: React.FC = () => {
                                                                 </button>
                                                                 <button
                                                                     className="text-gray-500 hover:text-red-600 ml-2"
-                                                                    onClick={() => handleDeleteComment(comment._id)}
+                                                                    onClick={() => handleDeleteComment(comment.id)} // <--- CORRECCIÓN: Usar .id
                                                                 >
                                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -843,6 +856,7 @@ const StudentCourseView: React.FC = () => {
                                                     {comment.respuestas && comment.respuestas.length > 0 && (
                                                         <div className="p-4 pl-14 space-y-4 border-b border-gray-100">
                                                             {comment.respuestas.map((reply) => (
+                                                                // <--- CORRECCIÓN: Usar .id
                                                                 <div key={reply.id} className="flex items-start">
                                                                     {/* Avatar de la respuesta */}
                                                                     <div className="flex-shrink-0 mr-3">
@@ -860,7 +874,7 @@ const StudentCourseView: React.FC = () => {
                                                                             </div>
                                                                         </div>
 
-                                                                        {editingReply && editingReply.commentId === comment._id && editingReply.replyId === reply.id ? (
+                                                                        {editingReply && editingReply.commentId === comment.id && editingReply.replyId === reply.id ? ( // <--- CORRECCIÓN: Usar .id
                                                                             <div className="mt-1">
                                                                                 <textarea
                                                                                     value={editContent}
@@ -879,7 +893,7 @@ const StudentCourseView: React.FC = () => {
                                                                                         Cancelar
                                                                                     </button>
                                                                                     <button
-                                                                                        onClick={() => handleUpdateReply(comment._id, reply.id)}
+                                                                                        onClick={() => handleUpdateReply(comment.id, reply.id)} // <--- CORRECCIÓN: Usar .id
                                                                                         className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
                                                                                     >
                                                                                         Guardar
@@ -897,7 +911,7 @@ const StudentCourseView: React.FC = () => {
                                                                             <button
                                                                                 className="text-gray-500 hover:text-gray-700"
                                                                                 onClick={() => {
-                                                                                    setEditingReply({ commentId: comment._id, replyId: reply.id });
+                                                                                    setEditingReply({ commentId: comment.id, replyId: reply.id }); // <--- CORRECCIÓN: Usar .id
                                                                                     setEditContent(reply.contenido);
                                                                                 }}
                                                                             >
@@ -907,7 +921,7 @@ const StudentCourseView: React.FC = () => {
                                                                             </button>
                                                                             <button
                                                                                 className="text-gray-500 hover:text-red-600 ml-2"
-                                                                                onClick={() => handleDeleteReply(comment._id, reply.id)}
+                                                                                onClick={() => handleDeleteReply(comment.id, reply.id)} // <--- CORRECCIÓN: Usar .id
                                                                             >
                                                                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -921,7 +935,7 @@ const StudentCourseView: React.FC = () => {
                                                     )}
 
                                                     {/* Formulario para responder */}
-                                                    {replyingTo === comment._id ? (
+                                                    {replyingTo === comment.id ? ( // <--- CORRECCIÓN: Usar .id
                                                         <div className="px-4 py-3 pl-14">
                                                             <textarea
                                                                 value={replyContent}
@@ -941,11 +955,11 @@ const StudentCourseView: React.FC = () => {
                                                                     Cancelar
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => handleSubmitReply(comment._id)}
+                                                                    onClick={() => handleSubmitReply(comment.id)} // <--- CORRECCIÓN: Usar .id
                                                                     disabled={!replyContent.trim()}
                                                                     className={`px-3 py-1 text-sm rounded-md ${!replyContent.trim()
-                                                                        ? 'bg-gray-300 cursor-not-allowed'
-                                                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                                                            ? 'bg-gray-300 cursor-not-allowed'
+                                                                            : 'bg-blue-600 text-white hover:bg-blue-700'
                                                                         }`}
                                                                 >
                                                                     Responder
@@ -954,7 +968,7 @@ const StudentCourseView: React.FC = () => {
                                                         </div>
                                                     ) : (
                                                         <button
-                                                            onClick={() => setReplyingTo(comment._id)}
+                                                            onClick={() => setReplyingTo(comment.id)} // <--- CORRECCIÓN: Usar .id
                                                             className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
                                                         >
                                                             <span className="flex items-center">
@@ -1005,13 +1019,13 @@ const StudentCourseView: React.FC = () => {
                                     </button>
 
                                     <button
-                                        className={`px-4 py-2 rounded-md ${completedLessons.includes(currentLesson._id)
-                                            ? 'bg-green-600 text-white hover:bg-green-700'
-                                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                                        className={`px-4 py-2 rounded-md ${completedLessons.includes(currentLesson.id) // <--- CORRECCIÓN: Usar .id
+                                                ? 'bg-green-600 text-white hover:bg-green-700'
+                                                : 'bg-blue-600 text-white hover:bg-blue-700'
                                             }`}
                                         onClick={markLessonComplete}
                                     >
-                                        {completedLessons.includes(currentLesson._id) ? 'Completado' : 'Marcar como completado'}
+                                        {completedLessons.includes(currentLesson.id) ? 'Completado' : 'Marcar como completado'} {/* <--- CORRECCIÓN: Usar .id */}
                                     </button>
                                 </div>
 
