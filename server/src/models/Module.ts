@@ -2,9 +2,10 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IModule extends Document {
+    _id: mongoose.Types.ObjectId; // Asumiendo que los IDs de módulo son ObjectId estándar
     titulo: string;
-    cursoId: mongoose.Types.ObjectId;
-    lecciones: mongoose.Types.ObjectId[];
+    cursoId: string; // <--- ¡IMPORTANTE! Cambiado a string
+    lecciones: mongoose.Types.ObjectId[]; // Asumiendo que los IDs de lección son ObjectId estándar
     descripcion?: string;
     ordenIndice: number; // Para mantener el orden de los módulos en un curso
 }
@@ -16,12 +17,12 @@ const moduleSchema = new Schema<IModule>({
         trim: true,
     },
     cursoId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Course',
+        type: String, // <--- ¡AQUÍ ESTÁ EL CAMBIO CRUCIAL! Ahora es String
+        ref: 'Course', // La referencia sigue siendo al modelo Course
         required: true,
     },
     lecciones: [{
-        type: Schema.Types.ObjectId,
+        type: Schema.Types.ObjectId, // Asumiendo que los IDs de lección son ObjectId estándar
         ref: 'Lesson',
     }],
     descripcion: {
@@ -32,7 +33,23 @@ const moduleSchema = new Schema<IModule>({
         default: 0,
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: { // Añadir transformaciones para el _id a id si es necesario
+        virtuals: true,
+        transform: function (doc, ret) {
+            ret.id = ret._id;
+            delete ret._id;
+            delete ret.__v;
+        }
+    },
+    toObject: {
+        virtuals: true,
+        transform: function (doc, ret) {
+            ret.id = ret._id;
+            delete ret._id;
+            delete ret.__v;
+        }
+    }
 });
 // Añadir al final del schema, antes de exportar el modelo
 moduleSchema.index({ titulo: 'text', descripcion: 'text' });
