@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 // Interfaz para Course
 export interface ICourse extends Document {
+    _id: string;
     titulo: string;
     descripcion: string;
     premium: boolean;
@@ -20,6 +21,11 @@ export interface ICourse extends Document {
 
 // Esquema principal del curso
 const courseSchema = new Schema<ICourse>({
+     _id: { // <--- ¡IMPORTANTE! Definir _id explícitamente como String
+        type: String,
+        required: true,
+        unique: true // Asegura que los IDs sean únicos
+    },
     titulo: {
         type: String,
         required: [true, 'El título es obligatorio'],
@@ -87,8 +93,18 @@ const courseSchema = new Schema<ICourse>({
         createdAt: 'fechaCreacion',
         updatedAt: 'fechaActualizacion'
     },
+    // Habilitar toJSON y toObject para incluir virtuales y transformaciones
+    id: true, // Esto asegura que se genere una propiedad 'id' virtual a partir de '_id'
     toJSON: {
-        virtuals: true,
+        virtuals: true, // Incluir virtuales (como 'id')
+        transform: function (doc, ret) {
+            ret.id = ret._id; // _id ya es un string, lo asignamos a id
+            delete ret._id; // Eliminar el _id original
+            delete ret.__v; // Eliminar __v
+        }
+    },
+    toObject: {
+        virtuals: true, // Incluir virtuales
         transform: function (doc, ret) {
             ret.id = ret._id;
             delete ret._id;
