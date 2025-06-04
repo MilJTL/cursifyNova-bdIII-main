@@ -17,10 +17,12 @@ export const config = {
     mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/cursify',
     
     // Redis (para caché)
-    redisUrl: process.env.REDIS_URL ||'redis://localhost:6379',  // Default local
+    redisUrl: process.env.NODE_ENV === 'production' 
+        ? process.env.REDIS_URL  // Obligatorio en producción
+        : 'redis://localhost:6379',  // Default local
     
     // Configuración de CORS
-    clientUrl: process.env.CLIENT_URL|| 'http://localhost:3000' ,
+    clientUrl: process.env.CLIENT_URL || 'http://localhost:3000',
     
     // Subida de archivos
     maxFileSize: process.env.MAX_FILE_SIZE || 10 * 1024 * 1024, // 10MB por defecto
