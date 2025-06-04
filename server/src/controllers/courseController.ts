@@ -85,14 +85,13 @@ export const getCourseById = async (req: Request, res: Response) => {
         const { id } = req.params; // El ID del curso viene de los parámetros de la URL
 
         // <--- ¡IMPORTANTE! Validar si el ID es válido o existe
-        if (!id) {
-            return res.status(400).json({ success: false, message: 'ID de curso no proporcionado.' });
+        if (!id || typeof id !== 'string') { // Asegurarse de que no sea undefined o no sea string
+            console.error('❌ Error en getCourseById: ID de curso no proporcionado o inválido:', id);
+            return res.status(400).json({ success: false, message: 'ID de curso no proporcionado o inválido.' });
         }
 
         // Buscar el curso por su ID.
-        // Asegúrate de que el campo '_id' en tu modelo Course sea de tipo String
-        // si tus IDs de curso son personalizados (ej. "c102").
-        // Si son ObjectId, Mongoose intentará castear, y fallará con strings no válidos.
+        // El campo '_id' en tu modelo Course.ts ya está definido como String, lo cual es correcto.
         const course = await Course.findById(id)
             .populate({
                 path: 'modulos',
@@ -103,6 +102,7 @@ export const getCourseById = async (req: Request, res: Response) => {
             .populate('autor', 'nombre avatarUrl'); // Popula la información del autor
 
         if (!course) {
+            console.warn('⚠️ Curso no encontrado para el ID:', id);
             return res.status(404).json({ success: false, message: 'Curso no encontrado.' });
         }
 
@@ -110,9 +110,10 @@ export const getCourseById = async (req: Request, res: Response) => {
 
     } catch (error: any) {
         // <--- ¡IMPORTANTE! Loguear el error completo aquí
-        console.error('❌ Error en getCourseById:', error);
+        console.error('❌ Error en getCourseById (catch):', error);
 
         // Si el error es un CastError (por ejemplo, ID inválido para ObjectId), devolver 400
+        // Esto es menos probable ahora que _id en Course es String, pero es buena práctica
         if (error.name === 'CastError') {
             return res.status(400).json({ success: false, message: `ID de curso inválido: ${error.value}` });
         }
@@ -123,6 +124,7 @@ export const getCourseById = async (req: Request, res: Response) => {
         });
     }
 };
+
 
 // Obtener curso completo con módulos y lecciones
 export const getFullCourse = async (req: Request, res: Response) => {
