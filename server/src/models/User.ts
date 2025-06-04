@@ -2,7 +2,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+// Interfaz para el documento de Usuario
 export interface IUser extends Document {
+    // Si tus IDs de usuario son ObjectId generados por MongoDB, no necesitas '_id: string;' aquí.
+    // Si tus IDs de usuario son strings personalizados (ej. "u100"), entonces sí:
+    // _id: string; 
     nombre: string;
     username: string;
     email: string;
@@ -10,15 +14,24 @@ export interface IUser extends Document {
     rol: 'user' | 'admin';
     premium: boolean;
     intereses: string[];
-    cursosInscritos?: mongoose.Types.ObjectId[];
-    certificados?: mongoose.Types.ObjectId[];
+    cursosInscritos: string[]; // <--- ¡IMPORTANTE! Cambiado a string[]
+    certificados?: mongoose.Types.ObjectId[]; // Asumiendo que Certificate usa ObjectId
     fechaRegistro: Date;
     avatarUrl?: string;
     biografia?: string;
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
+// Definir el esquema de Mongoose para el Usuario
 const UserSchema: Schema = new Schema({
+    // Si tus IDs de usuario son strings personalizados (ej. "u100"), descomenta y usa esto:
+    /*
+    _id: { 
+        type: String,
+        required: true,
+        unique: true
+    },
+    */
     nombre: {
         type: String,
         required: [true, 'El nombre es obligatorio']
@@ -58,11 +71,11 @@ const UserSchema: Schema = new Schema({
         default: []
     },
     cursosInscritos: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Course'
+        type: String, // <--- ¡AQUÍ ESTÁ EL CAMBIO CRUCIAL! Ahora es String
+        ref: 'Course' // La referencia sigue siendo al modelo Course
     }],
     certificados: [{
-        type: mongoose.Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId, // Asumiendo que Certificate usa ObjectId
         ref: 'Certificate'
     }],
     fechaRegistro: {
@@ -78,19 +91,33 @@ const UserSchema: Schema = new Schema({
         default: ''
     }
 }, {
-    timestamps: true
+    timestamps: true,
+    toJSON: { // Añadir transformaciones para el _id a id
+        virtuals: true,
+        transform: function (doc, ret) {
+            ret.id = ret._id; // Convertir _id a id
+            delete ret._id;
+            delete ret.__v;
+            delete ret.password; // Asegurarse de que la contraseña no se envíe
+        }
+    },
+    toObject: { // Añadir transformaciones para el _id a id
+        virtuals: true,
+        transform: function (doc, ret) {
+            ret.id = ret._id;
+            delete ret._id;
+            delete ret.__v;
+            delete ret.password;
+        }
+    }
 });
 
 // Middleware para encriptar la contraseña antes de guardar
 UserSchema.pre<IUser>('save', async function(next) {
-    // Solo hashear la contraseña si ha sido modificada o es nueva
     if (!this.isModified('password')) return next();
     
     try {
-        // Generar un salt
         const salt = await bcrypt.genSalt(10);
-        
-        // Hashear la contraseña con el salt
         this.password = await bcrypt.hash(this.password, salt);
         next();
     } catch (error: any) {
@@ -103,6 +130,8 @@ UserSchema.methods.comparePassword = async function(candidatePassword: string): 
     try {
         return await bcrypt.compare(candidatePassword, this.password);
     } catch (error) {
+        // Loguear el error para depuración
+        console.error('Error en comparePassword:', error);
         throw new Error('Error al comparar contraseñas');
     }
 };
