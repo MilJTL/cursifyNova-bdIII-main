@@ -23,11 +23,12 @@ declare global {
 // Obtener todos los cursos
 export const getCourses = async (req: Request, res: Response) => {
     try {
-        const { etiquetas, nivel, premium, busqueda, page = 1, limit = 10 } = req.query;
+        const { etiquetas, nivel, premium, busqueda, page = 1, limit = 10, enrolled, recommended } = req.query;
+        const userId = req.user?.userId; // Obtener el ID del usuario autenticado
 
         const query: any = {};
 
-        // Aplicar filtros
+        // Aplicar filtros de búsqueda y categoría
         if (etiquetas) {
             query.etiquetas = { $in: Array.isArray(etiquetas) ? etiquetas : [etiquetas] };
         }
@@ -37,48 +38,70 @@ export const getCourses = async (req: Request, res: Response) => {
             query.$text = { $search: busqueda.toString() };
         }
 
+        // Filtro para cursos inscritos (solo si el usuario está autenticado y se solicita 'enrolled')
+        if (enrolled === 'true' && userId) {
+            const user = await User.findById(userId).select('cursosInscritos');
+            if (user && user.cursosInscritos) {
+                // Mongoose ObjectId[] a string[] para la consulta si los IDs de curso son string
+                query._id = { $in: user.cursosInscritos.map(id => id.toString()) }; 
+            } else {
+                // Si no hay usuario o cursos inscritos, no devolver nada para esta consulta
+                return res.status(200).json({
+                    success: true,
+                    count: 0,
+                    total: 0,
+                    pages: 0,
+                    currentPage: 1,
+                    data: []
+                });
+            }
+        } else if (enrolled === 'true' && !userId) {
+            // Si se pide "enrolled" pero no hay usuario, devolver 401
+            return res.status(401).json({ success: false, message: 'No autorizado para ver cursos inscritos sin iniciar sesión.' });
+        }
+
+        // Filtro para cursos recomendados (puedes implementar tu lógica de recomendación aquí)
+        if (recommended === 'true') {
+            // Lógica de recomendación de ejemplo: cursos con alta valoración o los más recientes
+            // Por ahora, simplemente no aplicamos un filtro restrictivo adicional si no hay lógica compleja
+            // Esto podría ser más elaborado, por ejemplo, excluyendo cursos ya inscritos si userId está presente
+        }
+
+
         const pageNum = parseInt(page.toString(), 10);
         const limitNum = parseInt(limit.toString(), 10);
         const skip = (pageNum - 1) * limitNum;
 
         const cursos = await Course.find(query)
-            // No necesitamos .select('_id ...') porque Mongoose lo incluirá por defecto
-            // y el toJSON del esquema lo transformará.
-            .populate('autor', 'nombre username avatarUrl') // <--- Re-habilitado el populate
+            .populate('autor', 'nombre username avatarUrl')
             .sort({ fechaCreacion: -1 })
             .skip(skip)
             .limit(limitNum);
 
-        // Obtener el total de documentos para la paginación
         const total = await Course.countDocuments(query);
 
-        // Logs para depurar el _id y la transformación
-        if (cursos.length > 0) {
-            console.log("Primer curso RAW (con _id):", cursos[0]); // Objeto Mongoose completo
-            console.log("Tipo de _id del primer curso:", typeof cursos[0]._id);
-            console.log("Valor de _id del primer curso:", cursos[0]._id);
-            console.log("Primer curso TRANSFORMADO (con id):", cursos[0].toJSON()); // <--- Nuevo log para ver el resultado de toJSON
-        } else {
-            console.log("No se encontraron cursos.");
-        }
+        // Asegurarse de que la transformación toJSON se aplique a cada documento
+        // Mongoose lo hace automáticamente al enviar la respuesta, pero si quieres
+        // manipular los datos antes, puedes mapearlos explícitamente.
+        // Para consistencia, podemos mapear a un objeto plano que ya tendrá 'id'.
+        const formattedCourses = cursos.map(course => course.toObject());
 
-        // Mongoose aplicará automáticamente la transformación toJSON del esquema
         res.status(200).json({
             success: true,
-            count: cursos.length,
+            count: formattedCourses.length,
             total,
             pages: Math.ceil(total / limitNum),
             currentPage: pageNum,
-            data: cursos // Envía los documentos Mongoose directamente
+            data: formattedCourses // Envía los documentos transformados
         });
     } catch (error: any) {
+        console.error('❌ Error en getCourses:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Error al obtener cursos'
         });
     }
 };
-
 // Obtener curso por ID
 export const getCourseById = async (req: Request, res: Response) => {
     try {
