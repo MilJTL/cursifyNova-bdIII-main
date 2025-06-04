@@ -1,6 +1,6 @@
 import React from 'react';
 import CourseCard from './CourseCard';
-import type { Course } from '../../api/courses';
+import type { Course } from '../../api/courses'; // Asegúrate de que esta ruta sea correcta y el tipo 'Course' esté actualizado
 
 interface CourseListProps {
     courses: Course[];
@@ -43,9 +43,9 @@ const CourseList: React.FC<CourseListProps> = ({ courses, loading }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {courses.map((course) => (
-                console.log("Objeto curso en CourseList:", course),
-                <CourseCard key={course._id} course={{ ...course, duracionEstimada: course.duracionEstimada || '' }} />
-        ))}
+                // ¡IMPORTANTE! Usar course.id como key
+                <CourseCard key={course.id} course={{ ...course, duracionEstimada: course.duracionEstimada || '' }} />
+            ))}
         </div>
     );
 };
