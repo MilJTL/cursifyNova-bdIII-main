@@ -1,9 +1,9 @@
-// src/api/courses.ts
+// client/src/api/courses.ts
 import apiClient from './client';
 import type { Module } from './modules';
 
 export interface Course {
-    _id: string;
+    id: string; // <--- ¡DEBE SER 'id' y NO '_id' aquí!
     titulo: string;
     descripcion: string;
     imagenCurso?: string;
@@ -11,20 +11,26 @@ export interface Course {
     premium: boolean;
     precio?: number;
     modulos?: Module[];
-    valoracion?: number;
-    calificacion?: number; // Para compatibilidad con otras partes del código
+    valoracion: number;
+    numValoraciones: number; // Asegúrate de que esta propiedad exista
     etiquetas: string[];
-    estudiantes?: number; // Número de estudiantes inscritos
+    estudiantes?: number;
     autor: {
-        _id: string;
+        _id: string; // El _id del autor (si el backend lo envía así en el populate)
         nombre: string;
         username: string;
         avatarUrl?: string;
+        titulo?: string;
+        biografia?: string;
+        calificacion?: number;
+        cursos?: number;
+        estudiantes?: number;
     };
     duracionEstimada?: string;
-    fechaCreacion: Date;
+    fechaCreacion: string; // Como string ISO Date
+    fechaActualizacion: string; // Como string ISO Date
     publicado?: boolean;
-    estaDestacado?: boolean; // Para cursos destacados
+    estaDestacado?: boolean;
 }
 
 export interface CourseFormData {
@@ -45,10 +51,10 @@ export interface CoursesFilter {
     premium?: boolean;
     page?: number;
     limit?: number;
-    sort?: string; // Para ordenamiento adicional
-    featured?: boolean; // Para cursos destacados
-    enrolled?: boolean; // Para cursos en los que el usuario está inscrito
-    recommended?: boolean; // Para cursos recomendados
+    sort?: string;
+    featured?: boolean;
+    enrolled?: boolean;
+    recommended?: boolean;
 }
 
 export interface CourseResponse {
@@ -69,11 +75,8 @@ export interface CoursesResponse {
     };
 }
 
-/**
- * Obtiene la lista de cursos con opciones de filtrado
- */
+// ... (el resto de tus funciones de API)
 export const getCourses = async (filters: CoursesFilter = {}): Promise<Course[]> => {
-    // Construir los query params
     const params = new URLSearchParams();
     if (filters.busqueda) params.append('q', filters.busqueda);
     if (filters.nivel) params.append('nivel', filters.nivel);
@@ -93,9 +96,6 @@ export const getCourses = async (filters: CoursesFilter = {}): Promise<Course[]>
     }
 };
 
-/**
- * Obtiene los detalles de un curso por su ID
- */
 export const getCourseById = async (id: string): Promise<Course> => {
     try {
         const response = await apiClient.get<CourseResponse>(`/courses/${id}`);
@@ -106,9 +106,6 @@ export const getCourseById = async (id: string): Promise<Course> => {
     }
 };
 
-/**
- * Inscribe al usuario actual en un curso
- */
 export const enrollInCourse = async (courseId: string) => {
     try {
         const response = await apiClient.post<{ success: boolean; message: string }>(`/courses/${courseId}/enroll`);
@@ -119,9 +116,6 @@ export const enrollInCourse = async (courseId: string) => {
     }
 };
 
-/**
- * Cancela la inscripción del usuario actual en un curso
- */
 export const unenrollFromCourse = async (courseId: string) => {
     try {
         const response = await apiClient.delete<{ success: boolean; message: string }>(`/courses/${courseId}/unenroll`);
@@ -132,9 +126,6 @@ export const unenrollFromCourse = async (courseId: string) => {
     }
 };
 
-/**
- * Obtiene el progreso del usuario en un curso específico
- */
 export const getCourseProgress = async (courseId: string) => {
     try {
         const response = await apiClient.get(`/progress/courses/${courseId}`);
@@ -145,17 +136,10 @@ export const getCourseProgress = async (courseId: string) => {
     }
 };
 
-/**
- * Obtiene los cursos destacados/recomendados
- */
-// Función para obtener cursos destacados
 export const getFeaturedCourses = async (limit: number = 4): Promise<Course[]> => {
     return getCourses({ featured: true, limit });
 };
 
-/**
- * Busca cursos por término de búsqueda
- */
 export const searchCourses = async (query: string): Promise<Course[]> => {
     try {
         const response = await apiClient.get<CoursesResponse>(`/search/courses?q=${encodeURIComponent(query)}`);
@@ -166,11 +150,6 @@ export const searchCourses = async (query: string): Promise<Course[]> => {
     }
 };
 
-// FUNCIONES PARA INSTRUCTORES
-
-/**
- * Obtiene los cursos creados por el instructor autenticado
- */
 export const getInstructorCourses = async (): Promise<Course[]> => {
     try {
         const response = await apiClient.get<CoursesResponse>('/courses/instructor');
@@ -181,9 +160,6 @@ export const getInstructorCourses = async (): Promise<Course[]> => {
     }
 };
 
-/**
- * Crea un nuevo curso (solo para instructores)
- */
 export const createCourse = async (courseData: CourseFormData): Promise<Course> => {
     try {
         const response = await apiClient.post<CourseResponse>('/courses', courseData);
@@ -194,9 +170,6 @@ export const createCourse = async (courseData: CourseFormData): Promise<Course> 
     }
 };
 
-/**
- * Actualiza un curso existente (solo para instructores)
- */
 export const updateCourse = async (id: string, courseData: Partial<CourseFormData>): Promise<Course> => {
     try {
         const response = await apiClient.put<CourseResponse>(`/courses/${id}`, courseData);
@@ -207,9 +180,6 @@ export const updateCourse = async (id: string, courseData: Partial<CourseFormDat
     }
 };
 
-/**
- * Elimina un curso (solo para instructores)
- */
 export const deleteCourse = async (id: string): Promise<{ success: boolean; message: string }> => {
     try {
         const response = await apiClient.delete<{ success: boolean; message: string }>(`/courses/${id}`);
@@ -220,9 +190,6 @@ export const deleteCourse = async (id: string): Promise<{ success: boolean; mess
     }
 };
 
-/**
- * Cambia el estado de publicación de un curso (publicar/despublicar)
- */
 export const toggleCoursePublishStatus = async (id: string, publish: boolean): Promise<Course> => {
     try {
         const response = await apiClient.put<CourseResponse>(`/courses/${id}/publish`, { publicado: publish });
@@ -233,9 +200,6 @@ export const toggleCoursePublishStatus = async (id: string, publish: boolean): P
     }
 };
 
-/**
- * Obtiene los estudiantes inscritos en un curso específico (solo para instructores)
- */
 export const getCourseStudents = async (courseId: string) => {
     try {
         const response = await apiClient.get(`/instructor/courses/${courseId}/students`);
@@ -246,9 +210,6 @@ export const getCourseStudents = async (courseId: string) => {
     }
 };
 
-/**
- * Obtiene estadísticas de un curso específico (solo para instructores)
- */
 export const getCourseAnalytics = async (courseId: string) => {
     try {
         const response = await apiClient.get(`/instructor/courses/${courseId}/analytics`);
@@ -259,9 +220,6 @@ export const getCourseAnalytics = async (courseId: string) => {
     }
 };
 
-/**
- * Agrega una valoración/reseña a un curso
- */
 export const addCourseReview = async (courseId: string, data: { calificacion: number; comentario: string }) => {
     try {
         const response = await apiClient.post(`/courses/${courseId}/reviews`, data);
@@ -272,9 +230,6 @@ export const addCourseReview = async (courseId: string, data: { calificacion: nu
     }
 };
 
-/*
- * Obtiene las valoraciones/reseñas de un curso
- */
 export const getCourseReviews = async (courseId: string) => {
     try {
         const response = await apiClient.get(`/courses/${courseId}/reviews`);
@@ -285,9 +240,6 @@ export const getCourseReviews = async (courseId: string) => {
     }
 };
 
-/**
- * Obtiene cursos filtrados por categoría
- */
 export const getCoursesByCategory = async (category: string): Promise<Course[]> => {
     try {
         const response = await apiClient.get<CoursesResponse>(`/courses/category/${category}`);
@@ -297,4 +249,3 @@ export const getCoursesByCategory = async (category: string): Promise<Course[]> 
         throw error;
     }
 };
-
