@@ -82,22 +82,41 @@ export const getCourses = async (req: Request, res: Response) => {
 // Obtener curso por ID
 export const getCourseById = async (req: Request, res: Response) => {
     try {
-        const curso = await Course.findById(req.params.id)
-            .populate('autor', 'nombre username avatarUrl biografia');
+        const { id } = req.params; // El ID del curso viene de los parámetros de la URL
 
-        if (!curso) {
-            return res.status(404).json({
-                success: false,
-                message: 'Curso no encontrado'
-            });
+        // <--- ¡IMPORTANTE! Validar si el ID es válido o existe
+        if (!id) {
+            return res.status(400).json({ success: false, message: 'ID de curso no proporcionado.' });
         }
 
-        // Mongoose aplicará automáticamente la transformación toJSON del esquema
-        res.status(200).json({
-            success: true,
-            data: curso
-        });
+        // Buscar el curso por su ID.
+        // Asegúrate de que el campo '_id' en tu modelo Course sea de tipo String
+        // si tus IDs de curso son personalizados (ej. "c102").
+        // Si son ObjectId, Mongoose intentará castear, y fallará con strings no válidos.
+        const course = await Course.findById(id)
+            .populate({
+                path: 'modulos',
+                populate: {
+                    path: 'lecciones'
+                }
+            })
+            .populate('autor', 'nombre avatarUrl'); // Popula la información del autor
+
+        if (!course) {
+            return res.status(404).json({ success: false, message: 'Curso no encontrado.' });
+        }
+
+        res.status(200).json({ success: true, data: course });
+
     } catch (error: any) {
+        // <--- ¡IMPORTANTE! Loguear el error completo aquí
+        console.error('❌ Error en getCourseById:', error);
+
+        // Si el error es un CastError (por ejemplo, ID inválido para ObjectId), devolver 400
+        if (error.name === 'CastError') {
+            return res.status(400).json({ success: false, message: `ID de curso inválido: ${error.value}` });
+        }
+
         res.status(500).json({
             success: false,
             message: error.message || 'Error al obtener el curso'
