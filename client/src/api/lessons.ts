@@ -2,15 +2,15 @@
 import apiClient from './client';
 
 export interface Lesson {
-    videoUrl: boolean;
-    _id: string;
+    _id?: string; // Hacer opcional si el backend siempre devuelve 'id'
+    id: string; // <--- ¡IMPORTANTE! Añadido el campo 'id'
     titulo: string;
     contenido: string;
     tipo: 'texto' | 'video' | 'quiz';
-    duracion?: string;
-    moduloId: string;
+    duracion?: string; // Esto parece ser un string, pero el backend usa duracionMinutos: number
+    moduloId: string; // Este debe ser string ya que los IDs de módulo son strings personalizados
     ordenIndice: number;
-    duracionMinutos: number;
+    duracionMinutos: number; // Asegurarse de que este campo exista en el backend y sea un número
     esGratis: boolean;
     recursosAdicionales?: {
         titulo: string;
@@ -19,6 +19,15 @@ export interface Lesson {
     }[];
     createdAt: string;
     updatedAt: string;
+    // Si tienes videoUrl: boolean en tu Course, es un error de tipado. Debería ser la URL del video.
+    // Si es una URL, debería ser `videoUrl?: string;`
+    // Si es un booleano, significa que el nombre del campo está mal.
+    // Basado en StudentCourseView.tsx, `currentLesson.contenido` es la URL del video.
+    // Por lo tanto, `videoUrl: boolean;` aquí parece incorrecto. Lo eliminaré si no se usa.
+    // Si `contenido` es la URL del video, entonces `videoUrl` no es necesario.
+    // Si `videoUrl` es un flag, entonces el campo de la URL debería tener otro nombre.
+    // Por ahora, asumo que `contenido` es la URL del video o el texto de la lección.
+    // Si `videoUrl` realmente es un flag, por favor aclara su propósito.
 }
 
 export const getLessonsByModule = async (moduleId: string) => {
