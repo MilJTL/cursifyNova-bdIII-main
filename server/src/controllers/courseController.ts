@@ -1,9 +1,10 @@
 // server/src/controllers/courseController.ts
 import { Request, Response } from 'express';
-import Course from '../models/Course';
+import Course, { ICourse } from '../models/Course';
 import User from '../models/User';
 import Module from '../models/Module';
 import Lesson from '../models/Lesson';
+import { Document } from 'mongoose';
 
 // Extender la interfaz Request para incluir user (TypeScript)
 declare global {
@@ -17,6 +18,7 @@ declare global {
         }
     }
 }
+
 
 // Obtener todos los cursos
 export const getCourses = async (req: Request, res: Response) => {
@@ -35,30 +37,39 @@ export const getCourses = async (req: Request, res: Response) => {
             query.$text = { $search: busqueda.toString() };
         }
 
-        // Aplicar paginación
         const pageNum = parseInt(page.toString(), 10);
         const limitNum = parseInt(limit.toString(), 10);
         const skip = (pageNum - 1) * limitNum;
 
         const cursos = await Course.find(query)
-            .populate('autor', 'nombre username avatarUrl')
+            // No necesitamos .select('_id ...') porque Mongoose lo incluirá por defecto
+            // y el toJSON del esquema lo transformará.
+            .populate('autor', 'nombre username avatarUrl') // <--- Re-habilitado el populate
             .sort({ fechaCreacion: -1 })
             .skip(skip)
             .limit(limitNum);
 
-            console.log("Primer curso (stringified):", JSON.stringify(cursos[0], null, 2)); // <---- AGREGAR ESTA LÍNEA
-
-
         // Obtener el total de documentos para la paginación
         const total = await Course.countDocuments(query);
 
+        // Logs para depurar el _id y la transformación
+        if (cursos.length > 0) {
+            console.log("Primer curso RAW (con _id):", cursos[0]); // Objeto Mongoose completo
+            console.log("Tipo de _id del primer curso:", typeof cursos[0]._id);
+            console.log("Valor de _id del primer curso:", cursos[0]._id);
+            console.log("Primer curso TRANSFORMADO (con id):", cursos[0].toJSON()); // <--- Nuevo log para ver el resultado de toJSON
+        } else {
+            console.log("No se encontraron cursos.");
+        }
+
+        // Mongoose aplicará automáticamente la transformación toJSON del esquema
         res.status(200).json({
             success: true,
             count: cursos.length,
             total,
             pages: Math.ceil(total / limitNum),
             currentPage: pageNum,
-            data: cursos
+            data: cursos // Envía los documentos Mongoose directamente
         });
     } catch (error: any) {
         res.status(500).json({
@@ -81,6 +92,7 @@ export const getCourseById = async (req: Request, res: Response) => {
             });
         }
 
+        // Mongoose aplicará automáticamente la transformación toJSON del esquema
         res.status(200).json({
             success: true,
             data: curso
@@ -117,9 +129,9 @@ export const getFullCourse = async (req: Request, res: Response) => {
                 options: { sort: { ordenIndice: 1 } }
             });
             
-        // Formatear la respuesta
+        // Formatear la respuesta (aquí curso.toObject() ya debería tener el 'id' si el toObject del esquema funciona)
         const cursoCompleto = {
-            ...curso.toObject(),
+            ...curso.toObject(), // toObject() también aplicará la transformación del esquema
             modulos
         };
         
@@ -148,16 +160,17 @@ export const createCourse = async (req: Request, res: Response) => {
         }
 
         // Validar campos requeridos
-        const { titulo, descripcion } = req.body;
-        if (!titulo || !descripcion) {
+        const { _id, titulo, descripcion } = req.body; // Asegúrate de que _id se envíe si lo estás manejando manualmente
+        if (!_id || !titulo || !descripcion) { // Validar _id también
             return res.status(400).json({
                 success: false,
-                message: 'El título y la descripción son obligatorios'
+                message: 'El ID, título y la descripción son obligatorios'
             });
         }
 
         const cursoData = {
             ...req.body,
+            _id: _id, // Asignar el _id manualmente
             autor: userId,
             modulos: [] // Inicializar con un array vacío de referencias a módulos
         };
@@ -224,6 +237,7 @@ export const enrollCourse = async (req: Request, res: Response) => {
             message: 'Inscripción exitosa'
         });
     } catch (error: any) {
+        console.error('❌ Error en enrollCourse:', error); 
         res.status(500).json({
             success: false,
             message: error.message || 'Error al inscribirse en el curso'
@@ -361,6 +375,7 @@ export const getInstructorCourses = async (req: Request, res: Response) => {
             // Contar estudiantes inscritos (opcional)
             const estudiantes = await User.countDocuments({ cursosInscritos: curso._id });
             
+            // toObject() aplicará la transformación de toJSON/toObject del esquema
             return {
                 ...curso.toObject(),
                 estudiantes
