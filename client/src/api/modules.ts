@@ -3,7 +3,7 @@ import apiClient from './client';
 import type { Lesson } from './lessons';
 
 export interface Module {
-    _id: string;
+    id: string;
     titulo: string;
     descripcion?: string;
     cursoId: string;
